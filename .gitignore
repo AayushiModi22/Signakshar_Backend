@@ -1,0 +1,7 @@
+.env
+db.sqlite3
+__pycache__/
+# Ignore migrations folders
+*/migrations/
+/env
+# .gitignore
