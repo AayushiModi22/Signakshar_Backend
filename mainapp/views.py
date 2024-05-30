@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
 from .models import User
 #library: pip install PyJWT
 from datetime import datetime
@@ -1135,81 +1136,6 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import JSONParser
 
-# @csrf_exempt
-# def save_doc(request):
-#     try:
-#         if request.method == 'POST':
-#             data = JSONParser().parse(request)
-#             doc_name = data['name']
-#             userid = data['creator_id']
-
-#             #print(data["receipientData"][0]["role"])
-
-#             user = User.objects.get(pk=userid)
-#             # recipientRole = RecipientRole.objects.filter(
-#             #     role_name = data["receipientData"][0]["role"]
-#             # )
-
-#             existing_template = DocumentTable.objects.filter(
-#                 name=doc_name, creator_id=user
-#             ).exists()
-
-            
-#             if existing_template:
-#                 return JsonResponse(
-#                     {"error": "Document with the same name already exists for this user."}
-#                     # status=status.HTTP_400_BAD_REQUEST
-#                 )
-                
-#             document = DocumentTable.objects.create(
-#                 name=data['name'],
-#                 pdfName=data['pdfName'],
-#                 size=data['size'],
-#                 s3Key=data['s3Key'],
-#                 status=data['status'],
-#                 email_title=data['email_title'],
-#                 email_msg=data['email_message'],
-#                 creator_id =user
-#                 # expiration_days=data['Expiration']['expirationDays'],
-#                 # reminder_days=data['Expiration']['reminderDays']
-#             )
-#             document_id = document.id
-
-#             recipients = [
-#                 DocumentRecipientDetail(
-#                     name=recipient_data['RecipientName'],
-#                     email=recipient_data['RecipientEmail'],
-#                     roleId=RecipientRole.objects.filter(
-#                         role_name = recipient_data["role"]
-#                     ).first(),
-#                     docId= document_id
-#                 )
-#                 for recipient_data in data['receipientData']
-#             ]
-#             Expiration = data['Expiration']
-#             created_recipients = DocumentRecipientDetail.objects.bulk_create(recipients)
-            
-            
-#             # payload = {
-#             #     "recipient_list":data['receipientData'],
-#             #     "rdays":Expiration['expirationDays'],
-#             #     "sdate":"21-05-2024",
-#             #     "subject":data['email_title'],
-#             #     "message":data['email_message']
-#             # }
-#             # sequence_emails(payload)
-#             # #print(payload)
-#             # #print(document)
-#             # #print(created_recipients)
-#             return JsonResponse({"message": data})
-#         else:
-#             # user = request.user
-#             # queryset = DocumentTable.objects.filter(created_by=user)
-#             # return queryset
-#             return JsonResponse({"error": "Invalid request method"}, status=405)
-#     except Exception as e:
-#         return JsonResponse({'error': str(e)}, status=400)
-
 # Save the document record along with recipient detail
 @csrf_exempt
 def save_doc(request):
@@ -1315,7 +1241,6 @@ def get_doc(request):
         return JsonResponse({"error": "Document not found"}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
-
 
 @csrf_exempt
 def save_recipient_position_data(request):
@@ -1864,7 +1789,7 @@ def schedule_sequence_email(data):
         print("===================4==========================")
         # Calculate the reminder date for 10:00:00 AM based on selected days
         reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-        reminder_datetime_am = reminder_datetime_am.replace(hour=12, minute=42, second=0)
+        reminder_datetime_am = reminder_datetime_am.replace(hour=14, minute=35, second=0)
         print("===================5==========================")
         expiration_days = (scheduled_datetime - timezone.now()).days
         doc = DocumentTable.objects.get(pk=doc_id)
@@ -1889,8 +1814,8 @@ def schedule_sequence_email(data):
         )
 
         crontab_schedule_am, created_am = CrontabSchedule.objects.get_or_create(
-            minute=42,
-            hour=12,
+            minute=35,
+            hour=14,
             day_of_month=reminder_datetime_am.day,
             month_of_year=reminder_datetime_am.month,
             defaults={'timezone': 'Asia/Kolkata'}
