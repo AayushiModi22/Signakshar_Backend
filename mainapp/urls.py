@@ -5,7 +5,7 @@ from mainapp import views
 from django.urls import path,include
 from .views import Registerview
 from . import views
-from .views import LoginView,logoutview,updateTemplateDraggedData
+from .views import LoginView,logoutview,updateTemplateDraggedData,FetchUserDetailsView
 from .views import UserView,TemplateViewSet,TemplateDraggedDataViewset
 # from .views import UserDataView
 from .views import google_auth_callback
@@ -17,10 +17,10 @@ from mainapp import views
 from django.urls import path,include
 from .views import Registerview
 from . import views
-from .views import LoginView,logoutview,updateTemplateDraggedData,DocumentTableViewset,UseTemplateRecipientViewSet,DocumentByDocId,use_template_recipient_didTidCid,upload_file_to_s3,fetch_pdf_from_s3
+from .views import LoginView,logoutview,updateTemplateDraggedData,DocumentTableViewset,UseTemplateRecipientViewSet,DocumentByDocId,use_template_recipient_didTidCid,fetch_pdf_from_s3
 from .views import UserView,TemplateViewSet,TemplateRecipientViewset,TemplateDraggedDataViewset,TemplateRecipientByTemplateId,TemplateByTemplateId,GetDraggedDataByTempRec,send_email,sendOtp,verifyOtp,forgetPassword,CurrentUserView,DocAllRecipientById,GetDraggedDataByDocRec,sequence_email_approval,DocumentView2,deleteDocumentView
 from .views import deleteTemplate,googleLogIn,UserUpdateView,getRecipientCount,getPendingRecipientCount,getRecipientDetails,getStatus
-from .views import get_doc
+from .views import get_doc,upload_file_to_s3
 # ,GoogleLoginApi
  
 urlpatterns = [
@@ -76,8 +76,12 @@ urlpatterns = [
  
 #//=================== aws
     path('upload_file_to_s3/', upload_file_to_s3, name='upload_file_to_s3'),
-    path('fetch_pdf_from_s3/<str:file_name>/', fetch_pdf_from_s3, name='fetch_pdf_from_s3'),
+    # path('create_bucket/', create_bucket, name='create_bucket'),
+    # path('upload_file_to_existing_bucket/', upload_file_to_existing_bucket, name='upload_file_to_existing_bucket'),
+    path('fetch_pdf_from_s3/<str:bucket_name>/<str:file_name>/', fetch_pdf_from_s3, name='fetch_pdf_from_s3'),
     
+    path('user-details/<int:user_id>/', FetchUserDetailsView.as_view(), name='fetch_user_details'),
+
 # ===================================================================================
 # celery
 # ===================================================================================

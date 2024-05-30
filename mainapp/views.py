@@ -50,12 +50,7 @@ class Registerview(APIView):
         serializer = UserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_user = serializer.save()
-       
-        print(new_user)
-        print("new_user",new_user.id)
         uid = new_user.id
-        print("id : ",uid)
-       
         try:
             data = request.data
             signature_data = {
@@ -127,7 +122,6 @@ class UserView(APIView):
     def get(self, request):
         user = request.user
         serializer = UserSerializer(user)
-        print("user : ",serializer.data)
        
         userSignatueDetails = Signature.objects.filter(user_id_id=serializer.data["id"]).first()        
         # print(userSignatueDetails)
@@ -168,7 +162,33 @@ class UserUpdateView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+class FetchUserDetailsView(APIView):
+    # authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            user_serializer = UserSerializer(user)
+
+            user_signature_details = Signature.objects.filter(user_id_id=user_id).first()
+            user_initials_details = Initials.objects.filter(user_id_id=user_id).first()
+
+            signature_serializer = UserSignatureSerializer(user_signature_details) if user_signature_details else None
+            initials_serializer = UserInitialsSerializer(user_initials_details) if user_initials_details else None
+
+            response_data = {
+                'user': user_serializer.data,
+                'signature_details': signature_serializer.data if signature_serializer else None,
+                'initials_details': initials_serializer.data if initials_serializer else None
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found!'}, status=status.HTTP_404_NOT_FOUND)
+
+
 from rest_framework import status
 from rest_framework.response import Response
  
@@ -297,7 +317,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import TemplateDraggedData
 from .serializers import TemplateDraggedSerializer
- 
+from django.db.models import Q
 from django.http import JsonResponse
  
 class TemplateRecipientByTemplateId(APIView):
@@ -460,27 +480,36 @@ def send_emailnew(recipient,subject,message):
 def sendOtp(request):
     body_data = request.data
     new_OTP = generate_otp()
-    print(new_OTP)
+    filter = body_data["filter"]
+    print(new_OTP,filter)
     try:
         if not body_data["email"]:
             return Response({
                 'Status':400,
                 'StatusMsg':"Email is required..!!"
             })
-        print("first check in comapny master")
        
         emailExistInComapny = User.objects.filter(email = body_data["email"])
  
-        if(emailExistInComapny):
-            return Response({
-                'Status':400,
-                'StatusMsg':"This email already register..!!"
-            })
+        if not filter:
+            if(emailExistInComapny):
+                return Response({
+                    'Status':400,
+                    'StatusMsg':"This email already register..!!"
+                })
+        
+        if filter is "F":
+            print(emailExistInComapny)
+            if not emailExistInComapny:
+                return Response({
+                    'Status':400,
+                    'StatusMsg':"User not register..!!"
+                })
        
         try:
-            print("first check in otp master")
+            #print("first check in otp master")
             OTPEntry = otpUser.objects.get(email = body_data["email"])
-            print(OTPEntry)
+            #print(OTPEntry)
             # OTPEntry.VerifyOTP = new_OTP
             OTPEntry.otp = new_OTP
             # OTPEntry.Status = "N"
@@ -492,7 +521,7 @@ def sendOtp(request):
  
  
         except otpUser.DoesNotExist :
-            print("finally here")
+            #print("finally here")
             OTPEntry = otpUser.objects.create(email = body_data["email"],otp = new_OTP, status = "N")
     except Exception as e:
         return Response({
@@ -586,7 +615,11 @@ def forgetPassword(request):
         if not newPassword:
             return JsonResponse({'error': 'New Password is required'}, status=400)
         user = User.objects.get(email=email)
-        otp_record = otpUser.objects.filter(email=email, status='Y').first()
+        #print(user)
+        if not user:
+            return JsonResponse({'success': False, 'message': 'User not registered..!!'})
+
+        otp_record = otpUser.objects.filter(email=email).first()
         if otp_record:
             user.set_password(newPassword)
             user.save()
@@ -604,63 +637,263 @@ def forgetPassword(request):
 import boto3
 from django.http import JsonResponse
  
+#  ///////////old code to just upload file in fixed bucket
+# @csrf_exempt
+# def upload_file_to_s3(request):
+   
+#     if request.method == 'POST':
+#         file_object = request.FILES.get('file')
+#         bucket_name = 'bucketpdfdoc'
+#         print("file_object : ",file_object)
+#         if not file_object or not bucket_name:
+#             return JsonResponse({'success': False, 'error': 'File or bucket name not provided'}, status=400)
  
+#         # Create an S3 client
+#         s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+#                           aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+#                           region_name=settings.AWS_REGION)
+#         # Upload file to S3 bucket
+#         try:
+#             s3.upload_fileobj(file_object, bucket_name, file_object.name)
+#             return JsonResponse({'success': True, 'message': 'File uploaded successfully'})
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)}, status=500)
+#     else:
+#         return JsonResponse({'error': 'Method not allowed'}, status=405)
+ 
+
+# ///// this code is used to create bucket and upload file
+# @csrf_exempt
+# def upload_file_to_s3(request):
+#     if request.method == 'POST':
+#         file_object = request.FILES.get('file')
+#         user_id = request.POST.get('user_id')
+#         user_email = request.POST.get('user_email')
+
+#         if not file_object or not user_id or not user_email:
+#             return JsonResponse({'success': False, 'error': 'File, user ID, or user email not provided'}, status=400)
+
+#         # Extract the part of the email before the @ symbol
+#         trimmed_email = user_email.split('@')[0]
+
+#         # Generate a dynamic bucket name based on user ID and trimmed email
+#         bucket_name = f'sign-{user_id}-{trimmed_email}'
+
+#         # Create an S3 client
+#         s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+#                           aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+#                           region_name=settings.AWS_REGION)
+
+#         try:
+#             # Check if the bucket already exists
+#             if not bucket_exists(s3, bucket_name):
+#                 # Create a new bucket
+#                 s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': settings.AWS_REGION})
+
+#             # Upload file to the new bucket
+#             s3.upload_fileobj(file_object, bucket_name, file_object.name)
+#             return JsonResponse({'success': True, 'message': 'File uploaded successfully'})
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)}, status=500)
+#     else:
+#         return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+# def bucket_exists(s3, bucket_name):
+#     try:
+#         s3.head_bucket(Bucket=bucket_name)
+#         return True
+#     except boto3.exceptions.botocore.client.ClientError as e:
+#         error_code = int(e.response['Error']['Code'])
+#         if error_code == 404:
+#             return False
+#         else:
+#             raise
+
+# /////////////////////now making two api one for creating bucket and another for uploading pdf in particular bucket
+# import re
+# import boto3
+# from django.conf import settings
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
+
+# @csrf_exempt
+# def create_bucket(request):
+#     if request.method == 'POST':
+#         user_id = request.POST.get('user_id')
+#         user_email = request.POST.get('user_email')
+#         if not user_id or not user_email:
+#             return JsonResponse({'success': False, 'error': 'User ID or user email not provided'}, status=400)
+
+#         # Extract the part of the email before the @ symbol
+#         trimmed_email = user_email.split('@')[0].lower()
+#         # Replace invalid characters in email with hyphens
+#         trimmed_email = re.sub(r'[^a-z0-9-]', '-', trimmed_email)
+
+#         # Generate a dynamic bucket name based on user ID and trimmed email
+#         bucket_name = f'sign-{user_id}-{trimmed_email}'
+#         # Ensure the bucket name is valid and within length constraints
+#         if len(bucket_name) > 63:
+#             bucket_name = bucket_name[:63]
+
+#         s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+#                           aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+#                           region_name=settings.AWS_REGION)
+
+#         try:
+#             if not bucket_exists(s3, bucket_name):
+#                 s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': settings.AWS_REGION})
+#                 return JsonResponse({'success': True, 'message': 'Bucket created successfully', 'bucket_name': bucket_name})
+#             else:
+#                 return JsonResponse({'success': False, 'error': 'Bucket already exists'}, status=400)
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)}, status=500)
+#     else:
+#         return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+# def bucket_exists(s3, bucket_name):
+#     try:
+#         s3.head_bucket(Bucket=bucket_name)
+#         return True
+#     except boto3.exceptions.botocore.client.ClientError as e:
+#         error_code = int(e.response['Error']['Code'])
+#         if error_code == 404:
+#             return False
+#         else:
+#             raise
+# @csrf_exempt
+# def upload_file_to_existing_bucket(request):
+#     if request.method == 'POST':
+#         file_object = request.FILES.get('file')
+#         bucket_name = request.POST.get('bucket_name')
+
+#         if not file_object or not bucket_name:
+#             return JsonResponse({'success': False, 'error': 'File or bucket name not provided'}, status=400)
+
+#         # Create an S3 client
+#         s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+#                           aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+#                           region_name=settings.AWS_REGION)
+
+#         try:
+#             # Upload file to the existing bucket
+#             s3.upload_fileobj(file_object, bucket_name, file_object.name)
+#             return JsonResponse({'success': True, 'message': 'File uploaded successfully'})
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)}, status=500)
+#     else:
+#         return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+# ///// another api to check if bucket exists then add the file or make new bucket and then add the file
+import re
+import boto3
+from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+def bucket_exists(s3, bucket_name):
+    try:
+        s3.head_bucket(Bucket=bucket_name)
+        return True
+    except boto3.exceptions.botocore.client.ClientError as e:
+        error_code = int(e.response['Error']['Code'])
+        if error_code == 404:
+            return False
+        else:
+            raise
+
 @csrf_exempt
 def upload_file_to_s3(request):
-   
     if request.method == 'POST':
         file_object = request.FILES.get('file')
-        bucket_name = 'bucketpdfdoc'
- 
+        # user_id = request.POST.get('user_id')
+        # user_email = request.POST.get('user_email')
+        bucket_name = request.POST.get('bucket_name')
+
         if not file_object or not bucket_name:
-            return JsonResponse({'success': False, 'error': 'File or bucket name not provided'}, status=400)
- 
+            return JsonResponse({'success': False, 'error': 'File, user ID, user email, or bucket name not provided'}, status=400)
+
+        # Extract the part of the email before the @ symbol
+        # trimmed_email = user_email.split('@')[0].lower()
+        # # Replace invalid characters in email with hyphens
+        # trimmed_email = re.sub(r'[^a-z0-9-]', '-', trimmed_email)
+
+        # # Generate a dynamic bucket name based on user ID and trimmed email if bucket_name is not provided
+        # dynamic_bucket_name = f'sign-{user_id}-{trimmed_email}'
+        # # Ensure the bucket name is valid and within length constraints
+        # if len(dynamic_bucket_name) > 63:
+        #     dynamic_bucket_name = dynamic_bucket_name[:63]
+
         # Create an S3 client
         s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                           aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
                           region_name=settings.AWS_REGION)
- 
-        # Upload file to S3 bucket
+
         try:
+            # Check if the bucket already exists
+            if not bucket_exists(s3, bucket_name):
+                # Create a new bucket
+                s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': settings.AWS_REGION})
+
+            # Upload file to the bucket
             s3.upload_fileobj(file_object, bucket_name, file_object.name)
-            return JsonResponse({'success': True, 'message': 'File uploaded successfully'})
+            return JsonResponse({'success': True, 'message': 'File uploaded successfully', 'bucket_name': bucket_name})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
- 
+
+
 # /// fetch pdf from aws s3 bucket
 import boto3
 from botocore.exceptions import ClientError
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
  
-def fetch_pdf_from_s3(request, file_name):
-    bucket_name = 'bucketpdfdoc'
+# def fetch_pdf_from_s3(request, file_name):
+#     bucket_name = 'bucketpdfdoc'
  
+#     if not file_name or not bucket_name:
+#         return JsonResponse({'success': False, 'error': 'File name or bucket name not provided'}, status=400)
+ 
+#     # Create an S3 client
+#     s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+#                       aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+#                       region_name=settings.AWS_REGION)
+ 
+#     try:
+#         # Retrieve the PDF file object from S3 bucket
+#         response = s3.get_object(Bucket=bucket_name, Key=file_name)
+#         # Get the PDF file content from the response
+#         pdf_content = response['Body'].read()
+ 
+#         # Create an HTTP response with the PDF content
+#         http_response = HttpResponse(pdf_content, content_type='application/pdf')
+#         http_response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+#         return http_response
+#     except ClientError as e:
+#         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+ 
+@api_view(['GET'])
+def fetch_pdf_from_s3(request, bucket_name, file_name):
     if not file_name or not bucket_name:
         return JsonResponse({'success': False, 'error': 'File name or bucket name not provided'}, status=400)
- 
+
     # Create an S3 client
     s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                       aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
                       region_name=settings.AWS_REGION)
- 
+
     try:
         # Retrieve the PDF file object from S3 bucket
         response = s3.get_object(Bucket=bucket_name, Key=file_name)
         # Get the PDF file content from the response
         pdf_content = response['Body'].read()
- 
+
         # Create an HTTP response with the PDF content
-        http_response = HttpResponse(pdf_content, content_type='application/pdf')
-        http_response['Content-Disposition'] = f'attachment; filename="{file_name}"'
-        return http_response
+        return HttpResponse(pdf_content, content_type='application/pdf')
     except ClientError as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
- 
- 
- 
+
 from rest_framework.decorators import api_view
 # //// fetching s3_key based on docid
 @api_view(['GET'])
@@ -903,7 +1136,6 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import JSONParser
 
-
 # Save the document record along with recipient detail
 @csrf_exempt
 def save_doc(request):
@@ -1016,19 +1248,19 @@ def save_recipient_position_data(request):
         if request.method == 'POST':
             data = JSONParser().parse(request)
 
-            # print("request",request)
-            # print("data",data)
+            # #print("request",request)
+            # #print("data",data)
             newData1 = data["recipient_data"]
             
             Expiration = data["Expiration"]
             docId = data["docId"]
-            print("docId : ",docId)
+            #print("docId : ",docId)
             s_send = data["s_send"]
-            print("s_send : ",s_send)
+            #print("s_send : ",s_send)
             i = 0
             for newData in newData1:
                 i = i+1 
-                print(f"NewData : [{i}] ",newData)
+                #print(f"NewData : [{i}] ",newData)
                 doc_id = newData['docId']
                 
 
@@ -1038,7 +1270,7 @@ def save_recipient_position_data(request):
                 doc_Id = DocumentTable.objects.filter(
                     id = newData["docId"]
                 ).first()
-                # print("doc_Id",doc_Id)
+                # #print("doc_Id",doc_Id)
                 
                 rec_Id = DocumentRecipientDetail.objects.filter(
                     id = newData["docRecipientdetails_id"]
@@ -1062,7 +1294,7 @@ def save_recipient_position_data(request):
                
             # doc_recipient_detail_data = DocumentRecipientDetail.objects.filter(docId=docId)
             # for data in doc_recipient_detail_data:
-            #     print("doc_recipient_detail : ",data.email)
+            #     #print("doc_recipient_detail : ",data.email)
             email_list = DocumentRecipientDetail.objects.filter(docId=docId).values_list('email', flat=True)
             doc = DocumentTable.objects.get(pk=docId)
             # Convert the QuerySet to a list if needed (though QuerySet behaves like a list)
@@ -1073,7 +1305,7 @@ def save_recipient_position_data(request):
             # Loop through each recipient to set the message based on their role
             # message = doc.email_msg
             for rec in recipients:
-                print("rec.roleId_id : ",rec.roleId_id)
+                #print("rec.roleId_id : ",rec.roleId_id)
                 if rec.roleId_id == 1:
                     url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=signer&did={docId}&rid={rec.id}"
                     message = doc.email_msg + f"\n\nFor signing click on below link : {url} \nIf you already done the signature ignore this remainder"
@@ -1081,7 +1313,7 @@ def save_recipient_position_data(request):
                     url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={docId}&rid={rec.id}"
                     message = doc.email_msg + f"\n\nFor viewing pdf click on below link: {url}"
                 else:
-                    print(f"Invalid role for recipient: {rec}")
+                    #print(f"Invalid role for recipient: {rec}")
                     continue  
 
                 email_messages.append({
@@ -1090,9 +1322,9 @@ def save_recipient_position_data(request):
                     'message': message,
                 })
                     
-            print("email_messages : ",email_messages)
-            print("Expiration : ",Expiration['scheduledDate'])
-            print("doc : ",doc.email_msg)
+            #print("email_messages : ",email_messages)
+            #print("Expiration : ",Expiration['scheduledDate'])
+            #print("doc : ",doc.email_msg)
             payload = {
                 "recipient_list":email_messages,
                 "rdays":doc.reminderDays,
@@ -1112,13 +1344,13 @@ def save_recipient_position_data(request):
                 sequence_emails(payload)
             elif doc.req_type == "N":
                 # none request
-                print("email_messages : ",email_messages," doc.req_type : ",doc.req_type)
+                #print("email_messages : ",email_messages," doc.req_type : ",doc.req_type)
                 if data["Schedule"]:
                     none_send_email_schedule(email_messages,doc,data["scheduleDateAndTime"])
                 else:
                     none_send_email(email_messages,doc)
-            else:
-                print("something wrong")
+            # else:
+            #     #print("something wrong")
             # doc_id = data['docId']
             # doc = DocumentTable.objects.get(pk=doc_id)
 
@@ -1128,13 +1360,13 @@ def save_recipient_position_data(request):
             # doc_Id = DocumentTable.objects.filter(
             #     id = data["docId"]
             # ).first()
-            # print("doc_Id",doc_Id)
+            # #print("doc_Id",doc_Id)
             
             # rec_Id = DocumentRecipientDetail.objects.filter(
             #     id = data["docRecipientdetails_id"]
             # ).first()
-            # print("rec_Id",rec_Id)
-            # print("emailAction",data['emailAction'])
+            # #print("rec_Id",rec_Id)
+            # #print("emailAction",data['emailAction'])
    
             return JsonResponse({"message": "Recipient position data saved successfully.","error":False}, status=201)
         else:
@@ -1144,18 +1376,18 @@ def save_recipient_position_data(request):
 
 def none_send_email(email_messages,doc):
     try:
-        # print("email_messages : ",email_messages," docId : ",docId)
+        # #print("email_messages : ",email_messages," docId : ",docId)
         for email_message in email_messages:
-            print("email : ", email_message.get('email'))
+            #print("email : ", email_message.get('email'))
             recipient_email = email_message.get('email')
             subject = email_message.get('subject', '')
             message = email_message.get('message', '')
             try:
                 email_obj = EmailList.objects.create(emails=recipient_email,status="sent", docId=doc)
                 email_obj.save()
-                print("EmailList object created and saved successfully.")
-            except Exception as e:
-                print("Error creating or saving EmailList object:", e)
+                #print("EmailList object created and saved successfully.")
+            # except Exception as e:
+                ##print("Error creating or saving EmailList object:", e)
             finally:
                 schedule_sequence_email({"email":recipient_email,"reminderDays":doc.reminderDays,"scheduledDate":doc.expirationDateTime,"doc_id":doc.id,"title":subject, "message":message})
                 send_mail(subject, message, settings.EMAIL_HOST_USER, [recipient_email])
@@ -1165,16 +1397,16 @@ def none_send_email(email_messages,doc):
     
 def none_send_email_schedule(email_messages,doc,datetime):
     try:
-        # print("email_messages : ",email_messages," docId : ",docId)
+        # #print("email_messages : ",email_messages," docId : ",docId)
         for email_message in email_messages:
-            print("email : ", email_message.get('email'))
+            #print("email : ", email_message.get('email'))
             recipient_email = email_message.get('email')
             subject = email_message.get('subject', '')
             message = email_message.get('message', '')
             try:
                 email_obj = EmailList.objects.create(emails=recipient_email,status="sent", docId=doc)
                 email_obj.save()
-                print("EmailList object created and saved successfully.")
+                #print("EmailList object created and saved successfully.")
             except Exception as e:
                 print("Error creating or saving EmailList object:", e)
             finally:
@@ -1197,16 +1429,16 @@ def send_mail_to_sequence_recipient(email_obj,subject,message,doc_id):
 def send_mail_to_sequence_recipient_schedule(email_obj,subject,message,doc_id,scheduled_datetime):
     try:
         recipient_email = email_obj
-        print("schdule :==========1=================",scheduled_datetime)
+        #print("schdule :==========1=================",scheduled_datetime)
         if isinstance(scheduled_datetime, str):
             scheduled_datetime = datetime.strptime(scheduled_datetime, '%d/%m/%Y, %H:%M')
             scheduled_datetime = timezone.make_aware(scheduled_datetime, timezone.get_current_timezone())
 
-        print("schdule :==========3=================", scheduled_datetime)
+        #print("schdule :==========3=================", scheduled_datetime)
         
         # Now check if it's in the desired format
         if isinstance(scheduled_datetime, datetime):
-            print("schdule :==========2=================", scheduled_datetime)
+            #print("schdule :==========2=================", scheduled_datetime)
 
             expiration_days = (scheduled_datetime - timezone.now()).days
             doc = DocumentTable.objects.get(pk=doc_id)
@@ -1245,34 +1477,34 @@ def send_mail_to_sequence_recipient_schedule(email_obj,subject,message,doc_id,sc
 
 def sequence_emails(data):
     try:
-        print("+++++++++++++++++++++++++++")
+        #print("+++++++++++++++++++++++++++")
         # data = json.loads(request.body)
-        print("data : ",data)
+        #print("data : ",data)
         recipient_list = data["recipient_list"]
-        print("recipient_list : ",recipient_list)
-        print("sdate : ",data["sdate"])
+        #print("recipient_list : ",recipient_list)
+        #print("sdate : ",data["sdate"])
         if not recipient_list:
             return JsonResponse({"success": False, "message": "Recipient list is empty"}, status=400)
 
         # Store email addresses in the database with status 'pending'
         first_recipient_sent = False  # Flag to track if the first recipient has been sent the email
         for recipient_email in recipient_list:
-            print("recipient_list ==================================")
-            print("recipient_email : ",recipient_email['email'],data['docID'])
+            #print("recipient_list ==================================")
+            #print("recipient_email : ",recipient_email['email'],data['docID'])
             doc_Id1 = DocumentTable.objects.filter(
                 id = data["docID"]
             ).first()
-            print(doc_Id1)
+            #print(doc_Id1)
             email_obj = EmailList.objects.create(emails=recipient_email['email'],docId=doc_Id1)
-            print(email_obj)
+            #print(email_obj)
             # If the first recipient has not been sent the email yet, send it immediately
             if not first_recipient_sent:
-                print("Obj : ",email_obj)
+                #print("Obj : ",email_obj)
                 
                 schedule_sequence_email({"email":recipient_email["email"],"reminderDays":data["rdays"],"scheduledDate":data['sdate'],"doc_id":data["docID"],"title":recipient_email['subject'], "message":recipient_email["message"]})
                 
                 if data["Schedule"]:
-                    print("schdule :===========================")
+                    #print("schdule :===========================")
                     send_mail_to_sequence_recipient_schedule(recipient_email['email'],recipient_email['subject'],recipient_email["message"],data["docID"],data["scheduleDateAndTime"])
                 else:
                     send_mail_to_sequence_recipient(recipient_email['email'],recipient_email['subject'],recipient_email["message"],data["docID"])
@@ -1296,7 +1528,7 @@ def sequence_email_approval(request):
         if doc.req_type == "S":
             if email_id :
                 email_obj =  EmailList.objects.filter(docId=doc_id,emails=email_id.email).first()
-                print(email_obj)
+                #print(email_obj)
                 # email_obj = EmailList.objects.get(id=request.email_id,doc_id=request.doc_id)
                 if email_obj.status == 'sent':  
                     # Update the status of the current email to 'approved'
@@ -1305,20 +1537,20 @@ def sequence_email_approval(request):
 
                     # Get the next pending email after the current email
                     next_pending_email = EmailList.objects.filter(status='pending', docId=doc_id).first()
-                    # print("next_pending_email : ",next_pending_email.emails)
+                    # #print("next_pending_email : ",next_pending_email.emails)
                     # Send email to the next pending recipient if available
                     if next_pending_email:
                         
                         recipients = DocumentRecipientDetail.objects.filter(docId=doc_id,email=next_pending_email.emails).first()
-                        print("recipients : ",recipients.roleId.role_id)
+                        #print("recipients : ",recipients.roleId.role_id)
                         if recipients.roleId.role_id == 1:
                             url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=signer&did={doc_id}&rid={recipients.id}"
                             message = doc.email_msg + f"\n\nFor signing click on below link : {url} \nIf you already done the signature ignore this remainder"
                         elif recipients.roleId.role_id == 2:
                             url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={doc_id}&rid={recipients.id}"
                             message = doc.email_msg + f"\n\nFor viewing pdf click on below link: {url}"
-                        else:
-                            print(f"Invalid role for recipient: {recipients}")
+                        # else:
+                            #print(f"Invalid role for recipient: {recipients}")
                         schedule_sequence_email({"email":next_pending_email.emails,"reminderDays":doc.reminderDays,"scheduledDate":doc.expirationDateTime,"doc_id":doc_id,"title":doc.email_title, "message":message})
                         send_mail_to_sequence_recipient(next_pending_email.emails,doc.email_title,message,doc_id)
 
@@ -1362,7 +1594,7 @@ def sequence_email_approval(request):
         elif doc.req_type == "C":
             if email_id :
                 email_obj =  EmailList.objects.filter(docId=doc_id,emails=email_id.email).first()
-                print(email_obj)
+                #print(email_obj)
                 # email_obj = EmailList.objects.get(id=request.email_id,doc_id=request.doc_id)
                 if email_obj.status == 'sent':  
                     # Update the status of the current email to 'approved'
@@ -1373,13 +1605,13 @@ def sequence_email_approval(request):
                     next_pending_email = EmailList.objects.filter(status='pending', docId=doc_id)
                     
                     for data in next_pending_email:
-                        print("concurrent email: ", data)
+                        #print("concurrent email: ", data)
 
                         recipients = DocumentRecipientDetail.objects.filter(docId=doc_id, email=data.emails).first()
                         if not recipients:
                             continue  # Handle case where no recipient is found
 
-                        print("recipients: ", recipients.roleId.role_id)
+                        #print("recipients: ", recipients.roleId.role_id)
                         if recipients.roleId.role_id == 1:
                             url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=signer&did={doc_id}&rid={recipients.id}"
                             message = doc.email_msg + f"\n\nFor signing click on below link: {url} \nIf you already done the signature ignore this remainder"
@@ -1387,7 +1619,7 @@ def sequence_email_approval(request):
                             url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={doc_id}&rid={recipients.id}"
                             message = doc.email_msg + f"\n\nFor viewing pdf click on below link: {url} \nIf you already done the signature ignore this remainder"
                         else:
-                            print(f"Invalid role for recipient: {recipients}")
+                            #print(f"Invalid role for recipient: {recipients}")
                             continue  # Skip to next recipient
 
                         # Uncomment and define schedule_sequence_email if needed
