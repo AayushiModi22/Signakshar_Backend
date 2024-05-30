@@ -19,6 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Template,TemplateDraggedData,TemplateRecipient,DocumentTable,UseTemplateRecipient,otpUser,DocumentRecipientDetail,RecipientRole,RecipientPositionData, Signature, Initials
 from datetime import datetime, timedelta
 from send_mail_app.models import EmailList
+from django.db.models import Q
  
 # @csrf_exempt
 class JWTAuthentication(BaseAuthentication):
@@ -130,7 +131,7 @@ class UserView(APIView):
        
         userSignatueDetails = Signature.objects.filter(user_id_id=serializer.data["id"]).first()        
         # print(userSignatueDetails)
-        userInitialsDetails = Signature.objects.filter(user_id_id=serializer.data["id"]).first()
+        userInitialsDetails = Initials.objects.filter(user_id_id=serializer.data["id"]).first()
  
         signature_serializer = UserSignatureSerializer(userSignatueDetails) if userSignatueDetails else None
         initials_serializer = UserInitialsSerializer(userInitialsDetails) if userInitialsDetails else None
