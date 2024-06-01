@@ -28,23 +28,17 @@ class otpUser(models.Model):
 
 class Signature(models.Model):
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    # draw_img_name = models.CharField(max_length=255, blank=True, null=True)
     draw_img_name = models.TextField(blank=True, null=True)
     draw_enc_key = models.CharField(max_length=255, blank=True, null=True)
-    # img_name = models.CharField(max_length=255, blank=True, null=True)
     img_name = models.TextField(blank=True, null=True)
     img_enc_key = models.CharField(max_length=255, blank=True, null=True)
 
 class Initials(models.Model):
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    # draw_img_name = models.CharField(max_length=255, blank=True, null=True)
     draw_img_name = models.TextField(blank=True, null=True)
     draw_enc_key = models.CharField(max_length=255, blank=True, null=True)
-    # img_name = models.CharField(max_length=255, blank=True, null=True)
     img_name = models.TextField(blank=True, null=True)
     img_enc_key = models.CharField(max_length=255, blank=True, null=True)
-    # user = models.ForeignKey(User, on_delete=models.CASCADE, default=1)
-
 
 class RecipientRole(models.Model):
     role_id = models.AutoField(primary_key=True)

@@ -1,3 +1,4 @@
+from django.forms import ValidationError
 from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.views import APIView
@@ -131,16 +132,6 @@ class UserView(APIView):
         signature_serializer = UserSignatureSerializer(userSignatueDetails) if userSignatueDetails else None
         initials_serializer = UserInitialsSerializer(userInitialsDetails) if userInitialsDetails else None
  
-        # if signature_serializer:
-        #     print("userSignatureDetails", signature_serializer.data)
-        # else:
-        #     print("userSignatureDetails not found")
- 
-        # if initials_serializer:
-        #     print("userInitialsDetails", initials_serializer.data)
-        # else:
-        #     print("userInitialsDetails not found")
- 
         response_data = {
             'user': serializer.data,
             'signature_details': signature_serializer.data if signature_serializer else None,
@@ -151,18 +142,97 @@ class UserView(APIView):
 
 from rest_framework.parsers import MultiPartParser, FormParser
  
+# class UserUpdateView(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = [MultiPartParser, FormParser]
+ 
+#     def put(self, request):
+#         user = request.user
+#         serializer = UserSerializer(user, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class UserUpdateView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
- 
+
     def put(self, request):
         user = request.user
-        serializer = UserSerializer(user, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        user_data = {
+            'full_name': request.data.get('user[full_name]'),
+            'initial': request.data.get('user[initial]'),
+            'profile_pic': request.data.get('user[profile_pic]')
+        }
+        signature_data = {
+            'draw_img_name': request.data.get('signature[draw_img_name]'),
+            'draw_enc_key': request.data.get('signature[draw_enc_key]'),
+            'img_name': request.data.get('signature[img_name]'),
+            'img_enc_key': request.data.get('signature[img_enc_key]')
+        }
+        initials_data = {
+            'draw_img_name': request.data.get('initials[draw_img_name]'),
+            'draw_enc_key': request.data.get('initials[draw_enc_key]'),
+            'img_name': request.data.get('initials[img_name]'),
+            'img_enc_key': request.data.get('initials[img_enc_key]')
+        }
+        
+        print("Received request data: ", request.data)
+        print("Extracted user data: ", user_data)
+        print("Extracted signature data: ", signature_data)
+        print("Extracted initials data: ", initials_data)
+
+        user_serializer = UserSerializer(user, data=user_data, partial=True)
+        signature_queryset = Signature.objects.filter(user_id=user)
+        initials_queryset = Initials.objects.filter(user_id=user)
+
+        if signature_queryset.exists():
+            signature_instance = signature_queryset.first()
+        else:
+            signature_instance = Signature(user_id=user)
+
+        if initials_queryset.exists():
+            initials_instance = initials_queryset.first()
+        else:
+            initials_instance = Initials(user_id=user)
+
+        signature_serializer = UserSignatureSerializer(signature_instance, data=signature_data, partial=True)
+        initials_serializer = UserInitialsSerializer(initials_instance, data=initials_data, partial=True)
+
+        try:
+            if user_serializer.is_valid():
+                user_serializer.save()
+                print("User data is valid and saved.")
+
+                if signature_serializer.is_valid():
+                    signature_serializer.save()
+                    print("Signature data is valid and saved.")
+                else:
+                    print("Signature data is invalid: ", signature_serializer.errors)
+                    raise ValidationError(signature_serializer.errors)
+
+                if initials_serializer.is_valid():
+                    initials_serializer.save()
+                    print("Initials data is valid and saved.")
+                else:
+                    print("Initials data is invalid: ", initials_serializer.errors)
+                    raise ValidationError(initials_serializer.errors)
+
+                return Response({
+                    'user': user_serializer.data,
+                    'signature': signature_serializer.data,
+                    'initials': initials_serializer.data
+                }, status=status.HTTP_200_OK)
+            else:
+                print("User data is invalid: ", user_serializer.errors)
+                raise ValidationError(user_serializer.errors)
+        except Exception as e:
+            print("Exception occurred: ", str(e))
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class FetchUserDetailsView(APIView):
     # authentication_classes = [JWTAuthentication]
@@ -481,8 +551,8 @@ def send_emailnew(recipient,subject,message):
 def sendOtp(request):
     body_data = request.data
     new_OTP = generate_otp()
-    filter = body_data["filter"]
-    print(new_OTP,filter)
+    # filter = body_data["filter"]
+    # print(new_OTP,filter)
     try:
         if not body_data["email"]:
             return Response({
@@ -2005,8 +2075,27 @@ def googleLogIn(request):
                     password="",
                     full_name=user_info["name"],
                     signIn_with_google="Y",
-                    profile_pic=binary_string  # Assuming you have this field in your User model
+                    profile_pic=binary_string 
                 )
+                
+                signature_data = {
+                    'draw_img_name': None, 
+                    'draw_enc_key': None,
+                    'img_name': None,
+                    'img_enc_key': None,
+                    'user_id_id': res.id,
+                }
+                initial_data = {
+                    'draw_img_name': None, 
+                    'draw_enc_key': None,
+                    'img_name': None,
+                    'img_enc_key': None,
+                    'user_id_id': res.id,
+                }
+
+                Signature.objects.create(**signature_data)
+                Initials.objects.create(**initial_data)
+                
             print(res.id)
             payload = {
                 'id': res.id,
