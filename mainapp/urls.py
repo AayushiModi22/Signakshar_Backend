@@ -18,7 +18,7 @@ from django.urls import path,include
 from .views import Registerview
 from . import views
 from .views import LoginView,logoutview,updateTemplateDraggedData,DocumentTableViewset,UseTemplateRecipientViewSet,DocumentByDocId,use_template_recipient_didTidCid,fetch_pdf_from_s3
-from .views import UserView,TemplateViewSet,TemplateRecipientViewset,TemplateDraggedDataViewset,TemplateRecipientByTemplateId,TemplateByTemplateId,GetDraggedDataByTempRec,send_email,sendOtp,verifyOtp,forgetPassword,CurrentUserView,DocAllRecipientById,GetDraggedDataByDocRec,sequence_email_approval,DocumentView2,deleteDocumentView
+from .views import UserView,TemplateViewSet,TemplateRecipientViewset,TemplateDraggedDataViewset,TemplateRecipientByTemplateId,TemplateByTemplateId,GetDraggedDataByTempRec,send_email,sendOtp,verifyOtp,forgetPassword,CurrentUserView,DocAllRecipientById,GetDraggedDataByDocRec,sequence_email_approval,DocumentView2,deleteDocumentView,EmailListAPIView,DocumentRecipientDetailAPIView
 from .views import deleteTemplate,googleLogIn,UserUpdateView,getRecipientCount,getPendingRecipientCount,getRecipientDetails,getStatus
 from .views import get_doc,upload_file_to_s3,generate_presigned_url,save_multiple_doc,delete_file_from_s3
 # ,GoogleLoginApi
@@ -116,6 +116,10 @@ urlpatterns = [
 # Google Loin
     path('googleLogIn/',views.googleLogIn, name="googleLogIn"),
     path('trigger_delete_expired_documents/', trigger_delete_expired_documents, name='trigger_delete_expired_documents'),
+
+    path('email-list/<int:docId>/<str:recEmail>/', EmailListAPIView.as_view(),name='email-list-api'),
+    path('document-recipient-detail/<int:docId>/<str:recEmail>/', DocumentRecipientDetailAPIView.as_view(), name='document-recipient-detail-api'),
+
 
 ]
 
