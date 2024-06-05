@@ -97,6 +97,45 @@ class RecipientPositionData(models.Model):
     # receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='positions_received',default=2)
 
 
+# class BulkPdfDocumentTable(models.Model):
+#     id = models.AutoField(primary_key=True)
+#     name = models.CharField(max_length=100)
+#     # pdfName = models.CharField(max_length=100)
+#     # size = models.IntegerField()
+#     selectedPdfs = models.JSONField()
+#     creationDateTime = models.DateTimeField(default=timezone.now)
+#     s3Key = models.CharField(max_length=100)
+#     creator_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='positions_sent_bulkpdf',default=1)
+#     status = models.CharField(max_length=100)
+    
+# class BulkPdfPositionData(models.Model):
+#     signer_status_options = (
+#         ('Signed', 'Signed'),
+#         ('Unsigned', 'Unsigned'),
+#     )    
+#     reviewer_status_options = (
+#         ('Approved', 'Approved'),
+#         ('Declined', 'Declined'),
+#     )
+#     id = models.AutoField(primary_key=True)
+#     fieldName = models.CharField(max_length=100)
+#     color = models.CharField(max_length=50)
+#     name = models.CharField(max_length=100)
+#     email = models.EmailField()
+#     # fileName = models.CharField(max_length=100)  
+#     boxId = models.CharField(max_length=100)
+#     pageNum = models.IntegerField()
+#     x = models.FloatField()  
+#     y = models.FloatField()  
+#     width = models.FloatField()
+#     height = models.FloatField()
+#     docId = models.ForeignKey('BulkPdfDocumentTable', on_delete=models.CASCADE)
+#     roleId = models.ForeignKey(RecipientRole, on_delete=models.CASCADE,default=1)
+#     signer_status = models.CharField(max_length=100, choices=signer_status_options, unique=True)
+#     reviewer_status = models.CharField(max_length=100, choices=reviewer_status_options, unique=True)
+
+# sakshi changes
+
 class BulkPdfDocumentTable(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
@@ -107,7 +146,25 @@ class BulkPdfDocumentTable(models.Model):
     s3Key = models.CharField(max_length=100)
     creator_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='positions_sent_bulkpdf',default=1)
     status = models.CharField(max_length=100)
+    email_title = models.CharField(max_length=100,default="Hello")
+    email_msg = models.CharField(max_length=500,default="Hello")  
+    req_type = models.CharField(max_length=1,default='N')  
+    Schedule_type = models.CharField(max_length=1,default='N')  
+    last_modified_date_time = models.DateTimeField(default=timezone.now)
+    last_modified_by = models.ForeignKey(User, default=1,on_delete=models.CASCADE, related_name='bulk_documents_last_modified')
+    expirationDateTime = models.DateTimeField(default=timezone.now()+timedelta(days=7))
+    reminderDays = models.IntegerField(default=15)
     
+
+class BulkPdfRecipientDetail(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    email = models.EmailField()
+    docId = models.ForeignKey('BulkPdfDocumentTable', on_delete=models.CASCADE)
+    roleId = models.ForeignKey(RecipientRole, on_delete=models.CASCADE,default=1)
+    def _str_(self):
+        return self.name
+
 class BulkPdfPositionData(models.Model):
     signer_status_options = (
         ('Signed', 'Signed'),
@@ -120,8 +177,8 @@ class BulkPdfPositionData(models.Model):
     id = models.AutoField(primary_key=True)
     fieldName = models.CharField(max_length=100)
     color = models.CharField(max_length=50)
-    name = models.CharField(max_length=100)
-    email = models.EmailField()
+    #name = models.CharField(max_length=100)
+    #email = models.EmailField()
     # fileName = models.CharField(max_length=100)  
     boxId = models.CharField(max_length=100)
     pageNum = models.IntegerField()
@@ -130,9 +187,13 @@ class BulkPdfPositionData(models.Model):
     width = models.FloatField()
     height = models.FloatField()
     docId = models.ForeignKey('BulkPdfDocumentTable', on_delete=models.CASCADE)
-    roleId = models.ForeignKey(RecipientRole, on_delete=models.CASCADE,default=1)
+    #roleId = models.ForeignKey(RecipientRole, on_delete=models.CASCADE,default=1)
     signer_status = models.CharField(max_length=100, choices=signer_status_options, unique=True)
     reviewer_status = models.CharField(max_length=100, choices=reviewer_status_options, unique=True)
+    bulkpdf_recipient_detail_id = models.ForeignKey('BulkPdfRecipientDetail', on_delete=models.CASCADE,default=1)
+        
+# ///////
+
 
 class Template(models.Model):
     template_id = models.AutoField(primary_key=True) 
