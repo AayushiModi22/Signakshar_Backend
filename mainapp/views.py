@@ -21,6 +21,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Template,TemplateDraggedData,TemplateRecipient,DocumentTable,UseTemplateRecipient,otpUser,DocumentRecipientDetail,RecipientRole,RecipientPositionData, Signature, Initials
 from datetime import datetime, timedelta
 from send_mail_app.models import EmailList
+from send_mail_app.serializers import EmailListSerializer
 from django.db.models import Q
  
 # @csrf_exempt
@@ -2014,13 +2015,12 @@ class getPendingRecipientCount(APIView):
         doc_id = request.data.get('docid')
         if not doc_id:
             return Response({"error": "Document ID not provided"}, status=status.HTTP_400_BAD_REQUEST)
-        pending_count = RecipientPositionData.objects.filter(
+        pending_count = EmailList.objects.filter(
             Q(docId=doc_id) &
-            (Q(reviewer_status='pending') | Q(reviewer_status='sent') | Q(signer_status='pending') | Q(signer_status='sent'))
+            (Q(status='pending') | Q(status='sent') | Q(status='Pending') | Q(status='Sent'))
         ).distinct().count()
         # pendingCount = RecipientPositionData.objects.filter(docId=doc_id).filter(reviewer_status='Pending' or reviewer_status='sent' or signer_status='Pending' or signer_status='sent').count().distinct()
         return Response({"pending_count":pending_count}, status=status.HTTP_200_OK)
-
 
 class deleteDocumentView(APIView):
     def post(self, request):
@@ -2115,3 +2115,19 @@ def googleLogIn(request):
         # Handle request exception
         print(e)
         return JsonResponse({'error': str(e)}, status=500)
+
+class EmailListAPIView(APIView):
+    def get(self, request, docId, recEmail):
+        email_list = EmailList.objects.filter(docId=docId, emails=recEmail)
+        print("email_list",email_list)
+        serializer = EmailListSerializer(email_list, many=True)
+        print("abcd emaillist",serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class DocumentRecipientDetailAPIView(APIView):
+    def get(self, request, docId, recEmail):
+        recipient_details = DocumentRecipientDetail.objects.filter(docId=docId, email=recEmail)
+        print("recipient_details", recipient_details)
+        serializer = DocumentRecipientSerializer(recipient_details, many=True)
+        print("abcd recipientdetails", serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
