@@ -20,7 +20,7 @@ from . import views
 from .views import LoginView,logoutview,updateTemplateDraggedData,DocumentTableViewset,UseTemplateRecipientViewSet,DocumentByDocId,use_template_recipient_didTidCid,fetch_pdf_from_s3
 from .views import UserView,TemplateViewSet,TemplateRecipientViewset,TemplateDraggedDataViewset,TemplateRecipientByTemplateId,TemplateByTemplateId,GetDraggedDataByTempRec,send_email,sendOtp,verifyOtp,forgetPassword,CurrentUserView,DocAllRecipientById,GetDraggedDataByDocRec,sequence_email_approval,DocumentView2,deleteDocumentView
 from .views import deleteTemplate,googleLogIn,UserUpdateView,getRecipientCount,getPendingRecipientCount,getRecipientDetails,getStatus
-from .views import get_doc,upload_file_to_s3
+from .views import get_doc,upload_file_to_s3,generate_presigned_url,save_multiple_doc,delete_file_from_s3
 # ,GoogleLoginApi
  
 urlpatterns = [
@@ -30,6 +30,8 @@ urlpatterns = [
     path('getPendingRecipientCount/',getPendingRecipientCount.as_view()),
     path('getRecipientDetails/',getRecipientDetails.as_view()),
     path('getStatus/',getStatus.as_view()),
+    path('save_multiple_doc/',views.save_multiple_doc),
+    # /////////////
 
     path('register/', Registerview.as_view()),
     path('login/', LoginView.as_view()),
@@ -79,7 +81,10 @@ urlpatterns = [
     # path('create_bucket/', create_bucket, name='create_bucket'),
     # path('upload_file_to_existing_bucket/', upload_file_to_existing_bucket, name='upload_file_to_existing_bucket'),
     path('fetch_pdf_from_s3/<str:bucket_name>/<str:file_name>/', fetch_pdf_from_s3, name='fetch_pdf_from_s3'),
-    
+    path('generate_presigned_url/<str:bucket_name>/<str:file_name>/', generate_presigned_url, name='generate_presigned_url'),
+    path('delete_file_from_s3/', delete_file_from_s3, name='delete_file_from_s3'),
+
+
     path('user-details/<int:user_id>/', FetchUserDetailsView.as_view(), name='fetch_user_details'),
 
 # ===================================================================================

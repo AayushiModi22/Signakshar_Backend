@@ -18,7 +18,7 @@ from django.shortcuts import render,redirect
 from django.contrib.auth.decorators import login_required
 from social_django.utils import psa
 from django.views.decorators.csrf import csrf_exempt
-from .models import Template,TemplateDraggedData,TemplateRecipient,DocumentTable,UseTemplateRecipient,otpUser,DocumentRecipientDetail,RecipientRole,RecipientPositionData, Signature, Initials
+from .models import Template,TemplateDraggedData,TemplateRecipient,DocumentTable,UseTemplateRecipient,otpUser,DocumentRecipientDetail,RecipientRole,RecipientPositionData, Signature, Initials,BulkPdfDocumentTable,BulkPdfPositionData,BulkPdfRecipientDetail
 from datetime import datetime, timedelta
 from send_mail_app.models import EmailList
 from django.db.models import Q
@@ -141,19 +141,6 @@ class UserView(APIView):
  
 
 from rest_framework.parsers import MultiPartParser, FormParser
- 
-# class UserUpdateView(APIView):
-#     authentication_classes = [JWTAuthentication]
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = [MultiPartParser, FormParser]
- 
-#     def put(self, request):
-#         user = request.user
-#         serializer = UserSerializer(user, data=request.data, partial=True)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserUpdateView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -569,7 +556,7 @@ def sendOtp(request):
                     'StatusMsg':"This email already register..!!"
                 })
         
-        if filter is "F":
+        if filter == "F":
             print(emailExistInComapny)
             if not emailExistInComapny:
                 return Response({
@@ -883,18 +870,6 @@ def upload_file_to_s3(request):
         if not file_object or not bucket_name:
             return JsonResponse({'success': False, 'error': 'File, user ID, user email, or bucket name not provided'}, status=400)
 
-        # Extract the part of the email before the @ symbol
-        # trimmed_email = user_email.split('@')[0].lower()
-        # # Replace invalid characters in email with hyphens
-        # trimmed_email = re.sub(r'[^a-z0-9-]', '-', trimmed_email)
-
-        # # Generate a dynamic bucket name based on user ID and trimmed email if bucket_name is not provided
-        # dynamic_bucket_name = f'sign-{user_id}-{trimmed_email}'
-        # # Ensure the bucket name is valid and within length constraints
-        # if len(dynamic_bucket_name) > 63:
-        #     dynamic_bucket_name = dynamic_bucket_name[:63]
-
-        # Create an S3 client
         s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                           aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
                           region_name=settings.AWS_REGION)
@@ -976,6 +951,40 @@ def get_s3_key(request, docid):
     except DocumentTable.DoesNotExist:
         return Response({'error': 'Document not found'}, status=status.HTTP_404_NOT_FOUND)
  
+ #////// download api from s3 -------Rajvi
+@api_view(['GET'])
+def generate_presigned_url(request, bucket_name, file_name):
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_REGION
+    )
+    try:
+        response = s3_client.generate_presigned_url('get_object',Params={'Bucket': bucket_name,'Key': file_name},          ExpiresIn=3600)
+    except ClientError as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    return JsonResponse({'success': True, 'url': response})
+
+@csrf_exempt
+@api_view(['DELETE'])
+def delete_file_from_s3(request):
+    bucket_name = request.data.get('bucket_name')
+    file_name = request.data.get('file_name')
+
+    if not bucket_name or not file_name:
+        return JsonResponse({'success': False, 'error': 'Bucket name or file name not provided'}, status=400)
+
+    s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                      aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                      region_name=settings.AWS_REGION)
+
+    try:
+        s3.delete_object(Bucket=bucket_name, Key=file_name)
+        return JsonResponse({'success': True, 'message': 'File deleted successfully'})
+    except ClientError as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
  
 # ///// send email
 from django.conf import settings
@@ -1847,6 +1856,64 @@ class DocumentView2(APIView):
    
 
 # /// sakshi views
+@csrf_exempt
+def save_multiple_doc(request):
+    try:
+        if request.method == 'POST':
+            data = JSONParser().parse(request)
+            print(data)
+            if 'name' not in data:
+                return JsonResponse({'error': 'Missing field: name'}, status=400)
+            doc_name = data['name']
+            userid = data['creator_id']
+
+            user = User.objects.get(pk=userid)
+
+            existing_template = BulkPdfDocumentTable.objects.filter(
+                name=doc_name, creator_id=user
+            ).exists()
+
+            if existing_template:
+                return JsonResponse(
+                    {"error": "Document with the same name already exists for this user."},
+                    status=400
+                )
+
+            # Create the document
+            document = BulkPdfDocumentTable.objects.create(
+                name=data['name'],
+                selectedPdfs=data['selectedPdfs'],
+                s3Key=data['s3Key'],
+                status=data['status'],
+                email_title=data['email_title'],
+                email_msg=data['email_message'],
+                creator_id=user,
+                req_type=data['emailAction'],
+                expirationDateTime=data['scheduledDate'],
+                reminderDays=data['reminderDays'],
+            )
+            document_id = document.id
+            print("name: ",data['name'])
+            print(data['receipientData'])
+            recipients = [
+                BulkPdfRecipientDetail(
+                    name=recipient_data['RecipientName'],
+                    email=recipient_data['RecipientEmail'],
+                    roleId=RecipientRole.objects.filter(
+                        role_name = recipient_data['role']
+                    ).first(),
+                    docId= document
+                )
+                for recipient_data in data['receipientData']
+            ]
+            BulkPdfRecipientDetail.objects.bulk_create(recipients)
+            return JsonResponse({"doc_id":document.id,"message": "Document and recipients created successfully."})
+        else:
+            return JsonResponse({"error": "Invalid request method"}, status=405)
+    except Exception as e:
+        print('error:', str(e))
+        return JsonResponse({'error': str(e)}, status=400)
+
 class getRecipientCount(APIView):
     def post(self, request):
         doc_id = request.data.get('docid')
