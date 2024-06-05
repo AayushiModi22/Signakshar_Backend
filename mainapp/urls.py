@@ -6,7 +6,7 @@ from django.urls import path,include
 from .views import Registerview
 from . import views
 from .views import LoginView,logoutview,updateTemplateDraggedData,FetchUserDetailsView
-from .views import UserView,TemplateViewSet,TemplateDraggedDataViewset
+from .views import UserView,TemplateViewSet,TemplateDraggedDataViewset,trigger_delete_expired_documents
 # from .views import UserDataView
 from .views import google_auth_callback
  
@@ -93,9 +93,9 @@ urlpatterns = [
     path('',views.test,name="test"),
     path('sendmail/',views.send_mail_to_all,name="sendmail"),
     # path('schedulemail/',views.schedule_mail,name="schedulemail"),
-    path('schedule_email/', views.schedule_email, name='schedule_email'),
-    path('send_emails/', views.send_emails, name='send_emails'),
-    path('email_approval/<int:email_id>/', views.email_approval, name='email_approval'),
+    # path('schedule_email/', views.schedule_email, name='schedule_email'),
+    # path('send_emails/', views.send_emails, name='send_emails'),
+    # path('email_approval/<int:email_id>/', views.email_approval, name='email_approval'),
     path('get_email_list/', views.get_email_list, name='get_email_list'),
 
 
@@ -115,6 +115,7 @@ urlpatterns = [
 
 # Google Loin
     path('googleLogIn/',views.googleLogIn, name="googleLogIn"),
+    path('trigger_delete_expired_documents/', trigger_delete_expired_documents, name='trigger_delete_expired_documents'),
 
 ]
 

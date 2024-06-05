@@ -86,7 +86,7 @@ DATABASES = {
         'USER': 'root',
         'PASSWORD': '',
         'HOST': 'localhost',  # Change this to your MySQL server's hostname or IP address
-        'PORT': '3306',       # Change this to your MySQL server's port
+        'PORT': '3307',       # Change this to your MySQL server's port
     }
 }
 
@@ -179,9 +179,9 @@ EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS=True
 EMAIL_HOST="smtp.gmail.com"
 EMAIL_PORT=587
-EMAIL_HOST_USER='rajeshree24patel@gmail.com'
-EMAIL_HOST_PASSWORD="nblk bbal jreu wosf"
-DEFAULT_FROM_EMAIL='Celery <rajeshree24patel@gmail.com>'
+EMAIL_HOST_USER='signakshar74@gmail.com'
+EMAIL_HOST_PASSWORD="nmkl kxfd whwz jrxq"
+DEFAULT_FROM_EMAIL='Celery <signakshar74@gmail.com>'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
