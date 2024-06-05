@@ -18,7 +18,7 @@ from django.shortcuts import render,redirect
 from django.contrib.auth.decorators import login_required
 from social_django.utils import psa
 from django.views.decorators.csrf import csrf_exempt
-from .models import Template,TemplateDraggedData,TemplateRecipient,DocumentTable,UseTemplateRecipient,otpUser,DocumentRecipientDetail,RecipientRole,RecipientPositionData, Signature, Initials
+from .models import Template,TemplateDraggedData,TemplateRecipient,DocumentTable,UseTemplateRecipient,otpUser,DocumentRecipientDetail,RecipientRole,RecipientPositionData, Signature, Initials,BulkPdfDocumentTable,BulkPdfPositionData,BulkPdfRecipientDetail
 from datetime import datetime, timedelta
 from send_mail_app.models import EmailList
 from send_mail_app.serializers import EmailListSerializer
@@ -142,19 +142,6 @@ class UserView(APIView):
  
 
 from rest_framework.parsers import MultiPartParser, FormParser
- 
-# class UserUpdateView(APIView):
-#     authentication_classes = [JWTAuthentication]
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = [MultiPartParser, FormParser]
- 
-#     def put(self, request):
-#         user = request.user
-#         serializer = UserSerializer(user, data=request.data, partial=True)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserUpdateView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -570,7 +557,7 @@ def sendOtp(request):
                     'StatusMsg':"This email already register..!!"
                 })
         
-        if filter is "F":
+        if filter == "F":
             print(emailExistInComapny)
             if not emailExistInComapny:
                 return Response({
@@ -884,18 +871,6 @@ def upload_file_to_s3(request):
         if not file_object or not bucket_name:
             return JsonResponse({'success': False, 'error': 'File, user ID, user email, or bucket name not provided'}, status=400)
 
-        # Extract the part of the email before the @ symbol
-        # trimmed_email = user_email.split('@')[0].lower()
-        # # Replace invalid characters in email with hyphens
-        # trimmed_email = re.sub(r'[^a-z0-9-]', '-', trimmed_email)
-
-        # # Generate a dynamic bucket name based on user ID and trimmed email if bucket_name is not provided
-        # dynamic_bucket_name = f'sign-{user_id}-{trimmed_email}'
-        # # Ensure the bucket name is valid and within length constraints
-        # if len(dynamic_bucket_name) > 63:
-        #     dynamic_bucket_name = dynamic_bucket_name[:63]
-
-        # Create an S3 client
         s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                           aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
                           region_name=settings.AWS_REGION)
@@ -977,6 +952,40 @@ def get_s3_key(request, docid):
     except DocumentTable.DoesNotExist:
         return Response({'error': 'Document not found'}, status=status.HTTP_404_NOT_FOUND)
  
+ #////// download api from s3 -------Rajvi
+@api_view(['GET'])
+def generate_presigned_url(request, bucket_name, file_name):
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_REGION
+    )
+    try:
+        response = s3_client.generate_presigned_url('get_object',Params={'Bucket': bucket_name,'Key': file_name},          ExpiresIn=3600)
+    except ClientError as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    return JsonResponse({'success': True, 'url': response})
+
+@csrf_exempt
+@api_view(['DELETE'])
+def delete_file_from_s3(request):
+    bucket_name = request.data.get('bucket_name')
+    file_name = request.data.get('file_name')
+
+    if not bucket_name or not file_name:
+        return JsonResponse({'success': False, 'error': 'Bucket name or file name not provided'}, status=400)
+
+    s3 = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                      aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                      region_name=settings.AWS_REGION)
+
+    try:
+        s3.delete_object(Bucket=bucket_name, Key=file_name)
+        return JsonResponse({'success': True, 'message': 'File deleted successfully'})
+    except ClientError as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
  
 # ///// send email
 from django.conf import settings
@@ -1044,153 +1053,153 @@ def send_mail_to_all(request):
     send_mail_func.delay()
     return  HttpResponse("sent")
 
-@csrf_exempt
-def schedule_email(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            recipient_email = data.get('email')
-            scheduled_date = data.get('scheduledDate')
-            reminder_days = data.get('reminderDays')  # Get the reminder days from the request data
+# @csrf_exempt
+# def schedule_email(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body.decode('utf-8'))
+#             recipient_email = data.get('email')
+#             scheduled_date = data.get('scheduledDate')
+#             reminder_days = data.get('reminderDays')  # Get the reminder days from the request data
 
-            scheduled_datetime = datetime.strptime(scheduled_date, '%Y-%m-%d')
+#             scheduled_datetime = datetime.strptime(scheduled_date, '%Y-%m-%d')
 
-            # Calculate the reminder date for 4:00:00 PM
-            # remider before 24hrs
-            reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
-            # remider interval
-            reminder_datetime_pm = reminder_datetime_pm.replace(hour=16, minute=0, second=0)
+#             # Calculate the reminder date for 4:00:00 PM
+#             # remider before 24hrs
+#             reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
+#             # remider interval
+#             reminder_datetime_pm = reminder_datetime_pm.replace(hour=16, minute=0, second=0)
 
-            # Calculate the reminder date for 10:00:00 AM based on selected days
-            reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-            reminder_datetime_am = reminder_datetime_am.replace(hour=14, minute=55, second=0)
+#             # Calculate the reminder date for 10:00:00 AM based on selected days
+#             reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
+#             reminder_datetime_am = reminder_datetime_am.replace(hour=14, minute=55, second=0)
 
-            expiration_days = (scheduled_datetime - datetime.now()).days
+#             expiration_days = (scheduled_datetime - datetime.now()).days
 
-            scheduled_email = ScheduledEmail.objects.create(
-                recipient_email=recipient_email,
-                scheduled_time=scheduled_datetime,
-                expiration_days=expiration_days,
-                reminder_date_pm=reminder_datetime_pm,
-                reminder_date_am=reminder_datetime_am
-            )
+#             scheduled_email = ScheduledEmail.objects.create(
+#                 recipient_email=recipient_email,
+#                 scheduled_time=scheduled_datetime,
+#                 expiration_days=expiration_days,
+#                 reminder_date_pm=reminder_datetime_pm,
+#                 reminder_date_am=reminder_datetime_am
+#             )
 
-            # Create CrontabSchedules for both reminder times
-            crontab_schedule_pm, created_pm = CrontabSchedule.objects.get_or_create(
-                minute=0,
-                hour=16,
-                day_of_month=reminder_datetime_pm.day,
-                month_of_year=reminder_datetime_pm.month,
-                defaults={'timezone': 'Asia/Kolkata'}
-            )
+#             # Create CrontabSchedules for both reminder times
+#             crontab_schedule_pm, created_pm = CrontabSchedule.objects.get_or_create(
+#                 minute=0,
+#                 hour=16,
+#                 day_of_month=reminder_datetime_pm.day,
+#                 month_of_year=reminder_datetime_pm.month,
+#                 defaults={'timezone': 'Asia/Kolkata'}
+#             )
 
-            crontab_schedule_am, created_am = CrontabSchedule.objects.get_or_create(
-                minute=55,
-                hour=14,
-                day_of_month=reminder_datetime_am.day,
-                month_of_year=reminder_datetime_am.month,
-                defaults={'timezone': 'Asia/Kolkata'}
-            )
+#             crontab_schedule_am, created_am = CrontabSchedule.objects.get_or_create(
+#                 minute=55,
+#                 hour=14,
+#                 day_of_month=reminder_datetime_am.day,
+#                 month_of_year=reminder_datetime_am.month,
+#                 defaults={'timezone': 'Asia/Kolkata'}
+#             )
 
-            # Create PeriodicTasks associated with the scheduled email and CrontabSchedules
-            task_name_pm = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_pm.strftime('%Y_%m_%d_%H_%M')}_pm"
-            task_name_am = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_am.strftime('%Y_%m_%d_%H_%M')}_am"
+#             # Create PeriodicTasks associated with the scheduled email and CrontabSchedules
+#             task_name_pm = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_pm.strftime('%Y_%m_%d_%H_%M')}_pm"
+#             task_name_am = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_am.strftime('%Y_%m_%d_%H_%M')}_am"
 
-            # Update or create PeriodicTasks for 4:00:00 PM reminder
-            PeriodicTask.objects.update_or_create(
-                name=task_name_pm,
-                defaults={
-                    'crontab': crontab_schedule_pm,
-                    'task': 'send_mail_app.task.send_mail_func',
-                    'args': json.dumps([scheduled_email.id]),
-                }
-            )
+#             # Update or create PeriodicTasks for 4:00:00 PM reminder
+#             PeriodicTask.objects.update_or_create(
+#                 name=task_name_pm,
+#                 defaults={
+#                     'crontab': crontab_schedule_pm,
+#                     'task': 'send_mail_app.task.send_mail_func',
+#                     'args': json.dumps([scheduled_email.id]),
+#                 }
+#             )
 
-            # Update or create PeriodicTasks for 10:00:00 AM reminder
-            PeriodicTask.objects.update_or_create(
-                name=task_name_am,
-                defaults={
-                    'crontab': crontab_schedule_am,
-                    'task': 'send_mail_app.task.send_mail_func',
-                    'args': json.dumps([scheduled_email.id]),
-                }
-            )
+#             # Update or create PeriodicTasks for 10:00:00 AM reminder
+#             PeriodicTask.objects.update_or_create(
+#                 name=task_name_am,
+#                 defaults={
+#                     'crontab': crontab_schedule_am,
+#                     'task': 'send_mail_app.task.send_mail_func',
+#                     'args': json.dumps([scheduled_email.id]),
+#                 }
+#             )
 
-            return JsonResponse({'message': 'Scheduled Email'}, status=200)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON format'}, status=400)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    else:
-        return JsonResponse({'error': 'Invalid request method'}, status=400)
+#             return JsonResponse({'message': 'Scheduled Email'}, status=200)
+#         except json.JSONDecodeError:
+#             return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+#         except Exception as e:
+#             return JsonResponse({'error': str(e)}, status=500)
+#     else:
+#         return JsonResponse({'error': 'Invalid request method'}, status=400)
     
-# complete working to send the email through the approved button
+# # complete working to send the email through the approved button
 
-@csrf_exempt
-def send_emails(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            recipient_list = data.get('recipient_list', [])
-            if not recipient_list:
-                return JsonResponse({"success": False, "message": "Recipient list is empty"}, status=400)
+# @csrf_exempt
+# def send_emails(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body)
+#             recipient_list = data.get('recipient_list', [])
+#             if not recipient_list:
+#                 return JsonResponse({"success": False, "message": "Recipient list is empty"}, status=400)
 
-            # Store email addresses in the database with status 'pending'
-            first_recipient_sent = False  # Flag to track if the first recipient has been sent the email
-            for recipient_email in recipient_list:
-                email_obj = EmailList.objects.create(emails=recipient_email)
-                # If the first recipient has not been sent the email yet, send it immediately
-                if not first_recipient_sent:
-                    send_mail_to_recipient(email_obj)
-                    first_recipient_sent = True
-                else:
-                    email_obj.save()  # Save the other recipients with status 'pending'
+#             # Store email addresses in the database with status 'pending'
+#             first_recipient_sent = False  # Flag to track if the first recipient has been sent the email
+#             for recipient_email in recipient_list:
+#                 email_obj = EmailList.objects.create(emails=recipient_email)
+#                 # If the first recipient has not been sent the email yet, send it immediately
+#                 if not first_recipient_sent:
+#                     send_mail_to_recipient(email_obj)
+#                     first_recipient_sent = True
+#                 else:
+#                     email_obj.save()  # Save the other recipients with status 'pending'
 
-            return JsonResponse({"success": True, "message": "Emails sent successfully"}, safe=False)
-        except Exception as e:
-            return JsonResponse({"success": False, "message": str(e)}, status=500)
-    else:
-        return JsonResponse({"success": False, "message": "Only POST requests are allowed"}, status=405)
+#             return JsonResponse({"success": True, "message": "Emails sent successfully"}, safe=False)
+#         except Exception as e:
+#             return JsonResponse({"success": False, "message": str(e)}, status=500)
+#     else:
+#         return JsonResponse({"success": False, "message": "Only POST requests are allowed"}, status=405)
 
 
-@csrf_exempt
-def email_approval(request, email_id):
-    if request.method == 'GET':
-        try:
-            email_obj = EmailList.objects.get(id=email_id)
-            if email_obj.status == 'sent':
-                # Update the status of the current email to 'approved'
-                email_obj.status = 'approved'
-                email_obj.save()
+# @csrf_exempt
+# def email_approval(request, email_id):
+#     if request.method == 'GET':
+#         try:
+#             email_obj = EmailList.objects.get(id=email_id)
+#             if email_obj.status == 'sent':
+#                 # Update the status of the current email to 'approved'
+#                 email_obj.status = 'approved'
+#                 email_obj.save()
 
-                # Get the next pending email after the current email
-                next_pending_email = EmailList.objects.filter(status='pending', id__gt=email_obj.id).first()
+#                 # Get the next pending email after the current email
+#                 next_pending_email = EmailList.objects.filter(status='pending', id__gt=email_obj.id).first()
 
-                # Send email to the next pending recipient if available
-                if next_pending_email:
-                    send_mail_to_recipient(next_pending_email)
+#                 # Send email to the next pending recipient if available
+#                 if next_pending_email:
+#                     send_mail_to_recipient(next_pending_email)
 
-                # Redirect the user to the EmailList page
-                return redirect('http://localhost:3000/EmailList')
+#                 # Redirect the user to the EmailList page
+#                 return redirect('http://localhost:3000/EmailList')
 
-            else:
-                return JsonResponse({"error": "Email has not been sent yet"}, status=400)
-        except EmailList.DoesNotExist:
-            return JsonResponse({"error": "Email not found"}, status=404)
-    else:
-        return JsonResponse({"error": "Invalid HTTP method"}, status=405)
+#             else:
+#                 return JsonResponse({"error": "Email has not been sent yet"}, status=400)
+#         except EmailList.DoesNotExist:
+#             return JsonResponse({"error": "Email not found"}, status=404)
+#     else:
+#         return JsonResponse({"error": "Invalid HTTP method"}, status=405)
 
-def send_mail_to_recipient(email_obj):
-    subject = "Test email from Django"
-    message = "Hello there!!\nSequential email from django."
-    message += "\n\nClick <a href='http://localhost:3000/EmailList'>here</a> to view the email list and approve."
-    from_email = settings.EMAIL_HOST_USER
+# def send_mail_to_recipient(email_obj):
+#     subject = "Test email from Django"
+#     message = "Hello there!!\nSequential email from django."
+#     message += "\n\nClick <a href='http://localhost:3000/EmailList'>here</a> to view the email list and approve."
+#     from_email = settings.EMAIL_HOST_USER
 
-    send_mail(subject, message, from_email, [email_obj.emails], html_message=message)
+#     send_mail(subject, message, from_email, [email_obj.emails], html_message=message)
 
-    # Update the status of the current email to 'sent'
-    email_obj.status = 'sent'
-    email_obj.save()
+#     # Update the status of the current email to 'sent'
+#     email_obj.status = 'sent'
+#     email_obj.save()
 
 
 # fetching data for the UI 
@@ -1421,24 +1430,6 @@ def save_recipient_position_data(request):
                     none_send_email_schedule(email_messages,doc,data["scheduleDateAndTime"])
                 else:
                     none_send_email(email_messages,doc)
-            # else:
-            #     #print("something wrong")
-            # doc_id = data['docId']
-            # doc = DocumentTable.objects.get(pk=doc_id)
-
-            # doc_recipient_detail_id = data['docRecipientdetails_id']
-            # doc_recipient_detail = DocumentRecipientDetail.objects.get(pk=doc_recipient_detail_id)
-            
-            # doc_Id = DocumentTable.objects.filter(
-            #     id = data["docId"]
-            # ).first()
-            # #print("doc_Id",doc_Id)
-            
-            # rec_Id = DocumentRecipientDetail.objects.filter(
-            #     id = data["docRecipientdetails_id"]
-            # ).first()
-            # #print("rec_Id",rec_Id)
-            # #print("emailAction",data['emailAction'])
    
             return JsonResponse({"message": "Recipient position data saved successfully.","error":False}, status=201)
         else:
@@ -1457,9 +1448,6 @@ def none_send_email(email_messages,doc):
             try:
                 email_obj = EmailList.objects.create(emails=recipient_email,status="sent", docId=doc)
                 email_obj.save()
-                #print("EmailList object created and saved successfully.")
-            # except Exception as e:
-                ##print("Error creating or saving EmailList object:", e)
             finally:
                 schedule_sequence_email({"email":recipient_email,"reminderDays":doc.reminderDays,"scheduledDate":doc.expirationDateTime,"doc_id":doc.id,"title":subject, "message":message})
                 send_mail(subject, message, settings.EMAIL_HOST_USER, [recipient_email])
@@ -1722,105 +1710,6 @@ def sequence_email_approval(request):
     except EmailList.DoesNotExist:
         return JsonResponse({"error": "Email not found"}, status=404)
 
-
-# def schedule_sequence_email(data):
-#     try:
-#         recipient_email = data['email']
-#         scheduled_date = data['scheduledDate']
-#         reminder_days = data['reminderDays']  # Get the reminder days from the request data
-#         print("hgasddahsdkagb : ",recipient_email ," scheduled_date : ",scheduled_date," reminder_days : ",reminder_days)
-#         scheduled_datetime = timezone.make_aware(datetime.strptime(scheduled_date,'%d-%m-%Y'), timezone.get_current_timezone())
-        
-#         # scheduled_datetime = datetime.strptime(scheduled_date,'%d-%m-%Y')
-#         print("scheduled_datetime : ",scheduled_datetime)
-#         # Calculate the reminder date for 4:00:00 PM
-#         # remider before 24hrs
-#         # reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
-#         # # remider interval
-#         # reminder_datetime_pm = reminder_datetime_pm.replace(hour=16, minute=0, second=0)
-
-#         # # Calculate the reminder date for 10:00:00 AM based on selected days
-#         # reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-#         # reminder_datetime_am = reminder_datetime_am.replace(hour=18, minute=28, second=0)
-
-        
-
-
-#         # expiration_days = (scheduled_datetime - datetime.now()).days
-#         # print("====================")
-#         # scheduled_email = ScheduledEmail.objects.create(
-#         #     recipient_email=recipient_email,
-#         #     scheduled_time=scheduled_datetime,
-#         #     expiration_days=expiration_days,
-#         #     reminder_date_pm=reminder_datetime_pm,
-#         #     reminder_date_am=reminder_datetime_am
-#         # )
-#          # Calculate the reminder date for 4:00:00 PM
-#         reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
-#         reminder_datetime_pm = reminder_datetime_pm.replace(hour=16, minute=0, second=0)
-
-#         # Calculate the reminder date for 10:00:00 AM based on selected days
-#         reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-#         reminder_datetime_am = reminder_datetime_am.replace(hour=18, minute=31, second=0)
-
-#         expiration_days = (scheduled_datetime - timezone.now()).days
-        
-#         # scheduled_email = ScheduledEmail.objects.create(
-#         #     recipient_email=recipient_email,
-#         #     scheduled_time=scheduled_datetime,
-#         #     expiration_days=expiration_days,
-#         #     reminder_date_pm=reminder_datetime_pm,
-#         #     reminder_date_am=reminder_datetime_am
-#         # )
-#         print("==================***********************************************==")
-#         # Create CrontabSchedules for both reminder times
-#         crontab_schedule_pm, created_pm = CrontabSchedule.objects.get_or_create(
-#             minute=0,
-#             hour=16,
-#             day_of_month=reminder_datetime_pm.day,
-#             month_of_year=reminder_datetime_pm.month,
-#             defaults={'timezone': 'Asia/Kolkata'}
-#         )
-
-#         crontab_schedule_am, created_am = CrontabSchedule.objects.get_or_create(
-#             minute=31,
-#             hour=18,
-#             day_of_month=reminder_datetime_am.day,
-#             month_of_year=reminder_datetime_am.month,
-#             defaults={'timezone': 'Asia/Kolkata'}
-#         )
-
-#         # Create PeriodicTasks associated with the scheduled email and CrontabSchedules
-#         task_name_pm = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_pm.strftime('%Y_%m_%d_%H_%M')}_pm"
-#         task_name_am = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_am.strftime('%Y_%m_%d_%H_%M')}_am"
-
-#         # Update or create PeriodicTasks for 4:00:00 PM reminder
-#         PeriodicTask.objects.update_or_create(
-#             name=task_name_pm,
-#             defaults={
-#                 'crontab': crontab_schedule_pm,
-#                 'task': 'send_mail_app.task.send_mail_func',
-#                 'args': json.dumps([scheduled_email.id]),
-#             }
-#         )
-
-#         # Update or create PeriodicTasks for 10:00:00 AM reminder
-#         PeriodicTask.objects.update_or_create(
-#             name=task_name_am,
-#             defaults={
-#                 'crontab': crontab_schedule_am,
-#                 'task': 'send_mail_app.task.send_mail_func',
-#                 'args': json.dumps([scheduled_email.id]),
-#             }
-#         )
-
-#         return JsonResponse({'message': 'Scheduled Email'}, status=200)
-#     except json.JSONDecodeError:
-#         return JsonResponse({'error': 'Invalid JSON format'}, status=400)
-#     except Exception as e:
-#         return JsonResponse({'error': str(e)}, status=500)
-
-
 def schedule_sequence_email(data):
     try:
         print("==================1===========================")
@@ -1861,7 +1750,7 @@ def schedule_sequence_email(data):
         print("===================4==========================")
         # Calculate the reminder date for 10:00:00 AM based on selected days
         reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-        reminder_datetime_am = reminder_datetime_am.replace(hour=14, minute=35, second=0)
+        reminder_datetime_am = reminder_datetime_am.replace(hour=11, minute=37, second=0)
         print("===================5==========================")
         expiration_days = (scheduled_datetime - timezone.now()).days
         doc = DocumentTable.objects.get(pk=doc_id)
@@ -1886,8 +1775,8 @@ def schedule_sequence_email(data):
         )
 
         crontab_schedule_am, created_am = CrontabSchedule.objects.get_or_create(
-            minute=35,
-            hour=14,
+            minute=37,
+            hour=11,
             day_of_month=reminder_datetime_am.day,
             month_of_year=reminder_datetime_am.month,
             defaults={'timezone': 'Asia/Kolkata'}
@@ -1968,6 +1857,64 @@ class DocumentView2(APIView):
    
 
 # /// sakshi views
+@csrf_exempt
+def save_multiple_doc(request):
+    try:
+        if request.method == 'POST':
+            data = JSONParser().parse(request)
+            print(data)
+            if 'name' not in data:
+                return JsonResponse({'error': 'Missing field: name'}, status=400)
+            doc_name = data['name']
+            userid = data['creator_id']
+
+            user = User.objects.get(pk=userid)
+
+            existing_template = BulkPdfDocumentTable.objects.filter(
+                name=doc_name, creator_id=user
+            ).exists()
+
+            if existing_template:
+                return JsonResponse(
+                    {"error": "Document with the same name already exists for this user."},
+                    status=400
+                )
+
+            # Create the document
+            document = BulkPdfDocumentTable.objects.create(
+                name=data['name'],
+                selectedPdfs=data['selectedPdfs'],
+                s3Key=data['s3Key'],
+                status=data['status'],
+                email_title=data['email_title'],
+                email_msg=data['email_message'],
+                creator_id=user,
+                req_type=data['emailAction'],
+                expirationDateTime=data['scheduledDate'],
+                reminderDays=data['reminderDays'],
+            )
+            document_id = document.id
+            print("name: ",data['name'])
+            print(data['receipientData'])
+            recipients = [
+                BulkPdfRecipientDetail(
+                    name=recipient_data['RecipientName'],
+                    email=recipient_data['RecipientEmail'],
+                    roleId=RecipientRole.objects.filter(
+                        role_name = recipient_data['role']
+                    ).first(),
+                    docId= document
+                )
+                for recipient_data in data['receipientData']
+            ]
+            BulkPdfRecipientDetail.objects.bulk_create(recipients)
+            return JsonResponse({"doc_id":document.id,"message": "Document and recipients created successfully."})
+        else:
+            return JsonResponse({"error": "Invalid request method"}, status=405)
+    except Exception as e:
+        print('error:', str(e))
+        return JsonResponse({'error': str(e)}, status=400)
+
 class getRecipientCount(APIView):
     def post(self, request):
         doc_id = request.data.get('docid')
@@ -2131,3 +2078,12 @@ class DocumentRecipientDetailAPIView(APIView):
         serializer = DocumentRecipientSerializer(recipient_details, many=True)
         print("abcd recipientdetails", serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+from send_mail_app.task import delete_expired_documents
+@csrf_exempt
+def trigger_delete_expired_documents(request):
+    if request.method == 'POST':
+        delete_expired_documents.delay()  # Trigger the Celery task asynchronously
+        return JsonResponse({'message': 'Task to delete expired documents has been triggered.'})
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)

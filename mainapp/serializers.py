@@ -82,3 +82,8 @@ class UserInitialsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Initials
         fields = '__all__'
+
+class BulkDocumentTableSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BulkPdfDocumentTable
+        fields = '_all_'

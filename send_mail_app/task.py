@@ -4,6 +4,8 @@ from hastakshar_backend import settings
 from celery import shared_task
 from send_mail_app.models import ScheduledEmail
 from .models import EmailList
+from django.utils import timezone
+from .models import DocumentTable
 logger = logging.getLogger(__name__)
 
 @shared_task
@@ -43,3 +45,12 @@ def send_mail_func(scheduled_email_id,scheduled_email_subject,scheduled_email_me
         logger.error(f"Scheduled email with id {scheduled_email_id} does not exist")
     except Exception as e:
         logger.error(f"Failed to send email to {recipient_email}. Error: {e}")
+
+
+@shared_task
+def delete_expired_documents():
+    now = timezone.now()
+    expired_documents = DocumentTable.objects.filter(expirationDateTime__lte=now)
+    count = expired_documents.count()
+    expired_documents.delete()
+    return f"{count} expired documents deleted."
