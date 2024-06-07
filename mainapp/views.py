@@ -2013,3 +2013,13 @@ def trigger_delete_expired_documents(request):
         return JsonResponse({'message': 'Task to delete expired documents has been triggered.'})
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+class FetchRecipientFullDetails(APIView):
+    def get(self, request, recipient_id):
+        try:
+            recipient_detail = DocumentRecipientDetail.objects.get(pk=recipient_id)
+            serializer = DocumentRecipientSerializer(recipient_detail)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except DocumentRecipientDetail.DoesNotExist:
+            return Response({"error": "Recipient not found"}, status=status.HTTP_404_NOT_FOUND)
