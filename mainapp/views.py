@@ -127,7 +127,6 @@ class UserView(APIView):
         serializer = UserSerializer(user)
        
         userSignatueDetails = Signature.objects.filter(user_id_id=serializer.data["id"]).first()        
-        # print(userSignatueDetails)
         userInitialsDetails = Initials.objects.filter(user_id_id=serializer.data["id"]).first()
  
         signature_serializer = UserSignatureSerializer(userSignatueDetails) if userSignatueDetails else None
@@ -168,11 +167,6 @@ class UserUpdateView(APIView):
             'img_name': request.data.get('initials[img_name]'),
             'img_enc_key': request.data.get('initials[img_enc_key]')
         }
-        
-        print("Received request data: ", request.data)
-        print("Extracted user data: ", user_data)
-        print("Extracted signature data: ", signature_data)
-        print("Extracted initials data: ", initials_data)
 
         user_serializer = UserSerializer(user, data=user_data, partial=True)
         signature_queryset = Signature.objects.filter(user_id=user)
@@ -194,20 +188,15 @@ class UserUpdateView(APIView):
         try:
             if user_serializer.is_valid():
                 user_serializer.save()
-                print("User data is valid and saved.")
 
                 if signature_serializer.is_valid():
                     signature_serializer.save()
-                    print("Signature data is valid and saved.")
                 else:
-                    print("Signature data is invalid: ", signature_serializer.errors)
                     raise ValidationError(signature_serializer.errors)
 
                 if initials_serializer.is_valid():
                     initials_serializer.save()
-                    print("Initials data is valid and saved.")
                 else:
-                    print("Initials data is invalid: ", initials_serializer.errors)
                     raise ValidationError(initials_serializer.errors)
 
                 return Response({
@@ -216,10 +205,8 @@ class UserUpdateView(APIView):
                     'initials': initials_serializer.data
                 }, status=status.HTTP_200_OK)
             else:
-                print("User data is invalid: ", user_serializer.errors)
                 raise ValidationError(user_serializer.errors)
         except Exception as e:
-            print("Exception occurred: ", str(e))
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class FetchUserDetailsView(APIView):
@@ -539,8 +526,6 @@ def send_emailnew(recipient,subject,message):
 def sendOtp(request):
     body_data = request.data
     new_OTP = generate_otp()
-    # filter = body_data["filter"]
-    # print(new_OTP,filter)
     try:
         if not body_data["email"]:
             return Response({
@@ -558,7 +543,6 @@ def sendOtp(request):
                 })
         
         if filter == "F":
-            print(emailExistInComapny)
             if not emailExistInComapny:
                 return Response({
                     'Status':400,
@@ -566,21 +550,15 @@ def sendOtp(request):
                 })
        
         try:
-            #print("first check in otp master")
             OTPEntry = otpUser.objects.get(email = body_data["email"])
-            #print(OTPEntry)
-            # OTPEntry.VerifyOTP = new_OTP
             OTPEntry.otp = new_OTP
-            # OTPEntry.Status = "N"
             OTPEntry.status="N"
-            # OTPEntry.EntryTime = timezone.now()
             OTPEntry.entry_date= timezone.now()
             OTPEntry.save()
  
  
  
         except otpUser.DoesNotExist :
-            #print("finally here")
             OTPEntry = otpUser.objects.create(email = body_data["email"],otp = new_OTP, status = "N")
     except Exception as e:
         return Response({
@@ -674,7 +652,6 @@ def forgetPassword(request):
         if not newPassword:
             return JsonResponse({'error': 'New Password is required'}, status=400)
         user = User.objects.get(email=email)
-        #print(user)
         if not user:
             return JsonResponse({'success': False, 'message': 'User not registered..!!'})
 
@@ -1328,30 +1305,21 @@ def save_recipient_position_data(request):
     try:
         if request.method == 'POST':
             data = JSONParser().parse(request)
-
-            # #print("request",request)
-            # #print("data",data)
             newData1 = data["recipient_data"]
             
             Expiration = data["Expiration"]
             docId = data["docId"]
-            #print("docId : ",docId)
             s_send = data["s_send"]
-            #print("s_send : ",s_send)
             i = 0
             for newData in newData1:
                 i = i+1 
-                #print(f"NewData : [{i}] ",newData)
                 doc_id = newData['docId']
-                
-
                 doc_recipient_detail_id = newData['docRecipientdetails_id']
                 doc_recipient_detail = DocumentRecipientDetail.objects.get(pk=doc_recipient_detail_id)
 
                 doc_Id = DocumentTable.objects.filter(
                     id = newData["docId"]
                 ).first()
-                # #print("doc_Id",doc_Id)
                 
                 rec_Id = DocumentRecipientDetail.objects.filter(
                     id = newData["docRecipientdetails_id"]
@@ -1371,22 +1339,13 @@ def save_recipient_position_data(request):
                     docId=doc_Id,
                     docRecipientdetails_id=rec_Id
                 )
-
-               
-            # doc_recipient_detail_data = DocumentRecipientDetail.objects.filter(docId=docId)
-            # for data in doc_recipient_detail_data:
-            #     #print("doc_recipient_detail : ",data.email)
             email_list = DocumentRecipientDetail.objects.filter(docId=docId).values_list('email', flat=True)
             doc = DocumentTable.objects.get(pk=docId)
-            # Convert the QuerySet to a list if needed (though QuerySet behaves like a list)
             email_list = list(email_list)
 
             recipients = DocumentRecipientDetail.objects.filter(docId=docId)
             email_messages = []
-            # Loop through each recipient to set the message based on their role
-            # message = doc.email_msg
             for rec in recipients:
-                #print("rec.roleId_id : ",rec.roleId_id)
                 if rec.roleId_id == 1:
                     url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=signer&did={docId}&rid={rec.id}"
                     message = doc.email_msg + f"\n\nFor signing click on below link : {url} \nIf you already done the signature ignore this remainder"
@@ -1394,7 +1353,6 @@ def save_recipient_position_data(request):
                     url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={docId}&rid={rec.id}"
                     message = doc.email_msg + f"\n\nFor viewing pdf click on below link: {url}"
                 else:
-                    #print(f"Invalid role for recipient: {rec}")
                     continue  
 
                 email_messages.append({
@@ -1402,10 +1360,6 @@ def save_recipient_position_data(request):
                     'subject': doc.email_title,
                     'message': message,
                 })
-                    
-            #print("email_messages : ",email_messages)
-            #print("Expiration : ",Expiration['scheduledDate'])
-            #print("doc : ",doc.email_msg)
             payload = {
                 "recipient_list":email_messages,
                 "rdays":doc.reminderDays,
@@ -1418,14 +1372,10 @@ def save_recipient_position_data(request):
             }
             
             if doc.req_type == "S":
-                # sequence request
                 sequence_emails(payload)
             elif doc.req_type == "C":
-                # Concurrent request
                 sequence_emails(payload)
             elif doc.req_type == "N":
-                # none request
-                #print("email_messages : ",email_messages," doc.req_type : ",doc.req_type)
                 if data["Schedule"]:
                     none_send_email_schedule(email_messages,doc,data["scheduleDateAndTime"])
                 else:
@@ -1439,9 +1389,7 @@ def save_recipient_position_data(request):
 
 def none_send_email(email_messages,doc):
     try:
-        # #print("email_messages : ",email_messages," docId : ",docId)
         for email_message in email_messages:
-            #print("email : ", email_message.get('email'))
             recipient_email = email_message.get('email')
             subject = email_message.get('subject', '')
             message = email_message.get('message', '')
@@ -1457,16 +1405,13 @@ def none_send_email(email_messages,doc):
     
 def none_send_email_schedule(email_messages,doc,datetime):
     try:
-        # #print("email_messages : ",email_messages," docId : ",docId)
         for email_message in email_messages:
-            #print("email : ", email_message.get('email'))
             recipient_email = email_message.get('email')
             subject = email_message.get('subject', '')
             message = email_message.get('message', '')
             try:
                 email_obj = EmailList.objects.create(emails=recipient_email,status="sent", docId=doc)
                 email_obj.save()
-                #print("EmailList object created and saved successfully.")
             except Exception as e:
                 print("Error creating or saving EmailList object:", e)
             finally:
@@ -1489,16 +1434,11 @@ def send_mail_to_sequence_recipient(email_obj,subject,message,doc_id):
 def send_mail_to_sequence_recipient_schedule(email_obj,subject,message,doc_id,scheduled_datetime):
     try:
         recipient_email = email_obj
-        #print("schdule :==========1=================",scheduled_datetime)
         if isinstance(scheduled_datetime, str):
             scheduled_datetime = datetime.strptime(scheduled_datetime, '%d/%m/%Y, %H:%M')
             scheduled_datetime = timezone.make_aware(scheduled_datetime, timezone.get_current_timezone())
-
-        #print("schdule :==========3=================", scheduled_datetime)
         
-        # Now check if it's in the desired format
         if isinstance(scheduled_datetime, datetime):
-            #print("schdule :==========2=================", scheduled_datetime)
 
             expiration_days = (scheduled_datetime - timezone.now()).days
             doc = DocumentTable.objects.get(pk=doc_id)
@@ -1510,7 +1450,6 @@ def send_mail_to_sequence_recipient_schedule(email_obj,subject,message,doc_id,sc
                 doc_id=doc
             )
 
-            # Create CrontabSchedule for the scheduled time
             crontab_schedule, created = CrontabSchedule.objects.get_or_create(
                 minute=scheduled_datetime.minute,
                 hour=scheduled_datetime.hour,
@@ -1519,10 +1458,8 @@ def send_mail_to_sequence_recipient_schedule(email_obj,subject,message,doc_id,sc
                 defaults={'timezone': 'Asia/Kolkata'}
             )
 
-            # Create PeriodicTask associated with the scheduled email and CrontabSchedule
             task_name = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{scheduled_datetime.strftime('%Y_%m_%d_%H_%M')}"
             
-            # Update or create PeriodicTask for the scheduled time
             PeriodicTask.objects.update_or_create(
                 name=task_name,
                 defaults={
@@ -1537,40 +1474,25 @@ def send_mail_to_sequence_recipient_schedule(email_obj,subject,message,doc_id,sc
 
 def sequence_emails(data):
     try:
-        #print("+++++++++++++++++++++++++++")
-        # data = json.loads(request.body)
-        #print("data : ",data)
         recipient_list = data["recipient_list"]
-        #print("recipient_list : ",recipient_list)
-        #print("sdate : ",data["sdate"])
         if not recipient_list:
             return JsonResponse({"success": False, "message": "Recipient list is empty"}, status=400)
 
-        # Store email addresses in the database with status 'pending'
-        first_recipient_sent = False  # Flag to track if the first recipient has been sent the email
+        first_recipient_sent = False
         for recipient_email in recipient_list:
-            #print("recipient_list ==================================")
-            #print("recipient_email : ",recipient_email['email'],data['docID'])
             doc_Id1 = DocumentTable.objects.filter(
                 id = data["docID"]
             ).first()
-            #print(doc_Id1)
             email_obj = EmailList.objects.create(emails=recipient_email['email'],docId=doc_Id1)
-            #print(email_obj)
-            # If the first recipient has not been sent the email yet, send it immediately
             if not first_recipient_sent:
-                #print("Obj : ",email_obj)
-                
                 schedule_sequence_email({"email":recipient_email["email"],"reminderDays":data["rdays"],"scheduledDate":data['sdate'],"doc_id":data["docID"],"title":recipient_email['subject'], "message":recipient_email["message"]})
-                
                 if data["Schedule"]:
-                    #print("schdule :===========================")
                     send_mail_to_sequence_recipient_schedule(recipient_email['email'],recipient_email['subject'],recipient_email["message"],data["docID"],data["scheduleDateAndTime"])
                 else:
                     send_mail_to_sequence_recipient(recipient_email['email'],recipient_email['subject'],recipient_email["message"],data["docID"])
                 first_recipient_sent = True
             else:
-                email_obj.save()  # Save the other recipients with status 'pending'
+                email_obj.save()  
 
         return JsonResponse({"success": True, "message": "Emails sent successfully"}, safe=False)
     except Exception as e:
@@ -1588,33 +1510,22 @@ def sequence_email_approval(request):
         if doc.req_type == "S":
             if email_id :
                 email_obj =  EmailList.objects.filter(docId=doc_id,emails=email_id.email).first()
-                #print(email_obj)
-                # email_obj = EmailList.objects.get(id=request.email_id,doc_id=request.doc_id)
                 if email_obj.status == 'sent':  
-                    # Update the status of the current email to 'approved'
                     email_obj.status = 'approved'
                     email_obj.save()
 
-                    # Get the next pending email after the current email
                     next_pending_email = EmailList.objects.filter(status='pending', docId=doc_id).first()
-                    # #print("next_pending_email : ",next_pending_email.emails)
-                    # Send email to the next pending recipient if available
                     if next_pending_email:
                         
                         recipients = DocumentRecipientDetail.objects.filter(docId=doc_id,email=next_pending_email.emails).first()
-                        #print("recipients : ",recipients.roleId.role_id)
                         if recipients.roleId.role_id == 1:
                             url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=signer&did={doc_id}&rid={recipients.id}"
                             message = doc.email_msg + f"\n\nFor signing click on below link : {url} \nIf you already done the signature ignore this remainder"
                         elif recipients.roleId.role_id == 2:
                             url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={doc_id}&rid={recipients.id}"
                             message = doc.email_msg + f"\n\nFor viewing pdf click on below link: {url}"
-                        # else:
-                            #print(f"Invalid role for recipient: {recipients}")
                         schedule_sequence_email({"email":next_pending_email.emails,"reminderDays":doc.reminderDays,"scheduledDate":doc.expirationDateTime,"doc_id":doc_id,"title":doc.email_title, "message":message})
                         send_mail_to_sequence_recipient(next_pending_email.emails,doc.email_title,message,doc_id)
-
-                        # Redirect the user to the EmailList page
                         return JsonResponse({"success": True}, safe=False,status=200)
                     else:
                         doc = DocumentTable.objects.get(pk=doc_id)
@@ -1628,7 +1539,7 @@ def sequence_email_approval(request):
         elif doc.req_type == "N":
             if email_id :
                 email_obj =  EmailList.objects.filter(docId=doc_id)
-                for data in email_obj:
+                for data in email_obj: 
                     if data.emails==email_id.email:
                         if data.status == 'sent':  
                             # Update the status of the current email to 'approved'
@@ -1654,24 +1565,17 @@ def sequence_email_approval(request):
         elif doc.req_type == "C":
             if email_id :
                 email_obj =  EmailList.objects.filter(docId=doc_id,emails=email_id.email).first()
-                #print(email_obj)
-                # email_obj = EmailList.objects.get(id=request.email_id,doc_id=request.doc_id)
                 if email_obj.status == 'sent':  
-                    # Update the status of the current email to 'approved'
                     email_obj.status = 'approved'
                     email_obj.save()
-
-                    # Get the next pending email after the current email
                     next_pending_email = EmailList.objects.filter(status='pending', docId=doc_id)
                     
                     for data in next_pending_email:
-                        #print("concurrent email: ", data)
 
                         recipients = DocumentRecipientDetail.objects.filter(docId=doc_id, email=data.emails).first()
                         if not recipients:
-                            continue  # Handle case where no recipient is found
+                            continue
 
-                        #print("recipients: ", recipients.roleId.role_id)
                         if recipients.roleId.role_id == 1:
                             url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=signer&did={doc_id}&rid={recipients.id}"
                             message = doc.email_msg + f"\n\nFor signing click on below link: {url} \nIf you already done the signature ignore this remainder"
@@ -1679,21 +1583,18 @@ def sequence_email_approval(request):
                             url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={doc_id}&rid={recipients.id}"
                             message = doc.email_msg + f"\n\nFor viewing pdf click on below link: {url} \nIf you already done the signature ignore this remainder"
                         else:
-                            #print(f"Invalid role for recipient: {recipients}")
-                            continue  # Skip to next recipient
+                            continue
 
-                        # Uncomment and define schedule_sequence_email if needed
-                        # schedule_sequence_email({"email": next_pending_email, "reminderDays": request.rdays, "scheduledDate": request.sdate})
                         schedule_sequence_email({"email":data.emails,"reminderDays":doc.reminderDays,"scheduledDate":doc.expirationDateTime,"doc_id":doc_id,"title":doc.email_title, "message":message})
                         send_mail_to_sequence_recipient(data.emails, doc.email_title, message, doc_id)
                     
                     email_obj = EmailList.objects.filter(docId=doc_id)
-                    all_approved = True  # Assume all emails are approved initially
+                    all_approved = True
 
                     for data in email_obj:
                         if data.status != 'approved':
-                            all_approved = False  # If any email is not approved, set flag to False
-                            break  # No need to continue checking, as we already found a non-approved email
+                            all_approved = False
+                            break  
 
                     if all_approved:
                         doc = DocumentTable.objects.get(pk=doc_id)
@@ -1839,22 +1740,49 @@ class GetDraggedDataByDocRec(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 # Home page changes 
+# class DocumentView2(APIView):
+#     def post(self, request, format=None):
+#         created_by_you = request.data.get('createdByYou')
+#         created_by_others = request.data.get('createdByOthers')
+#         user_id = request.data.get('userid')
+
+#         if created_by_you and created_by_others:
+#             documents = DocumentTable.objects.select_related('creator_id').select_related('last_modified_by').all()
+#         elif created_by_you:
+#             documents = DocumentTable.objects.filter(creator_id=user_id).select_related('creator_id').select_related('last_modified_by').all()
+#         else:
+#             documents = DocumentTable.objects.exclude(creator_id=user_id).select_related('creator_id').select_related('last_modified_by').all()
+
+#         serializer = DocumentSerializer(documents, many=True)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
 class DocumentView2(APIView):
     def post(self, request, format=None):
         created_by_you = request.data.get('createdByYou')
         created_by_others = request.data.get('createdByOthers')
         user_id = request.data.get('userid')
+        email = User.objects.get(id=user_id).email
+
+        if not user_id:
+            return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         if created_by_you and created_by_others:
-            documents = DocumentTable.objects.select_related('creator_id').select_related('last_modified_by').all()
+            documents = DocumentTable.objects.filter(
+                Q(creator_id=user_id) |
+                Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True))
+            ).select_related('creator_id', 'last_modified_by')
         elif created_by_you:
-            documents = DocumentTable.objects.filter(creator_id=user_id).select_related('creator_id').select_related('last_modified_by').all()
+            documents = DocumentTable.objects.filter(creator_id=user_id).select_related('creator_id', 'last_modified_by')
+        elif created_by_others:
+            documents = DocumentTable.objects.filter(
+                Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True)) &
+                ~Q(creator_id=user_id)
+            ).select_related('creator_id', 'last_modified_by')
         else:
-            documents = DocumentTable.objects.exclude(creator_id=user_id).select_related('creator_id').select_related('last_modified_by').all()
+            return Response({"error": "Invalid request parameters"}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = DocumentSerializer(documents, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-   
 
 # /// sakshi views
 @csrf_exempt
@@ -2066,9 +1994,7 @@ def googleLogIn(request):
 class EmailListAPIView(APIView):
     def get(self, request, docId, recEmail):
         email_list = EmailList.objects.filter(docId=docId, emails=recEmail)
-        print("email_list",email_list)
         serializer = EmailListSerializer(email_list, many=True)
-        print("abcd emaillist",serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class DocumentRecipientDetailAPIView(APIView):
@@ -2087,3 +2013,13 @@ def trigger_delete_expired_documents(request):
         return JsonResponse({'message': 'Task to delete expired documents has been triggered.'})
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+class FetchRecipientFullDetails(APIView):
+    def get(self, request, recipient_id):
+        try:
+            recipient_detail = DocumentRecipientDetail.objects.get(pk=recipient_id)
+            serializer = DocumentRecipientSerializer(recipient_detail)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except DocumentRecipientDetail.DoesNotExist:
+            return Response({"error": "Recipient not found"}, status=status.HTTP_404_NOT_FOUND)
