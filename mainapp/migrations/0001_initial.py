@@ -1,4 +1,5 @@
 
+
 import datetime
 import django.contrib.auth.models
 import django.db.models.deletion
@@ -79,7 +80,9 @@ class Migration(migrations.Migration):
                 ('req_type', models.CharField(default='N', max_length=1)),
                 ('Schedule_type', models.CharField(default='N', max_length=1)),
                 ('last_modified_date_time', models.DateTimeField(default=django.utils.timezone.now)),
+
                 ('expirationDateTime', models.DateTimeField(default=datetime.datetime(2024, 6, 13, 6, 52, 49, 694219, tzinfo=datetime.timezone.utc))),
+
                 ('reminderDays', models.IntegerField(default=15)),
                 ('creator_id', models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='positions_sent_bulkpdf', to=settings.AUTH_USER_MODEL)),
                 ('last_modified_by', models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='bulk_documents_last_modified', to=settings.AUTH_USER_MODEL)),
@@ -128,7 +131,9 @@ class Migration(migrations.Migration):
                 ('req_type', models.CharField(default='N', max_length=1)),
                 ('Schedule_type', models.CharField(default='N', max_length=1)),
                 ('last_modified_date_time', models.DateTimeField(default=django.utils.timezone.now)),
+
                 ('expirationDateTime', models.DateTimeField(default=datetime.datetime(2024, 6, 13, 6, 52, 49, 693219, tzinfo=datetime.timezone.utc))),
+
                 ('reminderDays', models.IntegerField()),
                 ('creator_id', models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='positions_sent', to=settings.AUTH_USER_MODEL)),
                 ('last_modified_by', models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='documents_last_modified', to=settings.AUTH_USER_MODEL)),
