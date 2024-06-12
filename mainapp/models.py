@@ -32,6 +32,9 @@ class Signature(models.Model):
     draw_enc_key = models.CharField(max_length=255, blank=True, null=True)
     img_name = models.TextField(blank=True, null=True)
     img_enc_key = models.CharField(max_length=255, blank=True, null=True)
+    sign_text_value= models.CharField(max_length=255, blank=True, null=True)
+    sign_text_font= models.CharField(max_length=255, blank=True, null=True)
+    sign_text_color= models.CharField(max_length=255, blank=True, null=True)
 
 class Initials(models.Model):
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -39,6 +42,9 @@ class Initials(models.Model):
     draw_enc_key = models.CharField(max_length=255, blank=True, null=True)
     img_name = models.TextField(blank=True, null=True)
     img_enc_key = models.CharField(max_length=255, blank=True, null=True)
+    initial_text_value= models.CharField(max_length=255, blank=True, null=True)
+    initial_text_font= models.CharField(max_length=255, blank=True, null=True)
+    initial_text_color= models.CharField(max_length=255, blank=True, null=True)
 
 class RecipientRole(models.Model):
     role_id = models.AutoField(primary_key=True)

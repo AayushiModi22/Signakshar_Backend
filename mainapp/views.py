@@ -63,6 +63,9 @@ class Registerview(APIView):
                 'img_name': data.get('img_name_signature'),
                 'img_enc_key': data.get('img_enc_key'),
                 'user_id_id': new_user.id,
+                'sign_text_color' : data.get('sign_text_color'),
+                'sign_text_font' : data.get('sign_text_font'),
+                'sign_text_value' : data.get('sign_text_value'),
             }
             initial_data = {
                 # 'id': new_user.id,
@@ -71,6 +74,9 @@ class Registerview(APIView):
                 'img_name': data.get('img_name_initials'),
                 'img_enc_key': data.get('img_enc_key'),
                 'user_id_id': new_user.id,
+                'initial_text_color' : data.get('initial_text_color'),
+                'initial_text_font' : data.get('initial_text_font'),
+                'initial_text_value' : data.get('initial_text_value'),
             }
  
             signatureTableData = Signature.objects.create(**signature_data)
@@ -153,19 +159,26 @@ class UserUpdateView(APIView):
         user_data = {
             'full_name': request.data.get('user[full_name]'),
             'initial': request.data.get('user[initial]'),
-            'profile_pic': request.data.get('user[profile_pic]')
+            'profile_pic': request.data.get('user[profile_pic]'),
+            'stamp_img_name':request.data.get('user[stamp_img_name]')
         }
         signature_data = {
             'draw_img_name': request.data.get('signature[draw_img_name]'),
             'draw_enc_key': request.data.get('signature[draw_enc_key]'),
             'img_name': request.data.get('signature[img_name]'),
-            'img_enc_key': request.data.get('signature[img_enc_key]')
+            'img_enc_key': request.data.get('signature[img_enc_key]'),
+            'sign_text_color': request.data.get('signature[sign_text_color]'),
+            'sign_text_font': request.data.get('signature[sign_text_font]'),
+            'sign_text_value': request.data.get('signature[sign_text_value]')
         }
         initials_data = {
             'draw_img_name': request.data.get('initials[draw_img_name]'),
             'draw_enc_key': request.data.get('initials[draw_enc_key]'),
             'img_name': request.data.get('initials[img_name]'),
-            'img_enc_key': request.data.get('initials[img_enc_key]')
+            'img_enc_key': request.data.get('initials[img_enc_key]'),
+            'initial_text_color': request.data.get('signature[initial_text_color]'),
+            'initial_text_font': request.data.get('signature[initial_text_font]'),
+            'initial_text_value': request.data.get('signature[initial_text_value]')
         }
 
         user_serializer = UserSerializer(user, data=user_data, partial=True)
@@ -1959,6 +1972,9 @@ def googleLogIn(request):
                     'img_name': None,
                     'img_enc_key': None,
                     'user_id_id': res.id,
+                    'sign_text_color' : None,
+                    'sign_text_font' : None,
+                    'sign_text_value' : None,
                 }
                 initial_data = {
                     'draw_img_name': None, 
@@ -1966,6 +1982,9 @@ def googleLogIn(request):
                     'img_name': None,
                     'img_enc_key': None,
                     'user_id_id': res.id,
+                    'initial_text_color' : None,
+                    'initial_text_font' : None,
+                    'initial_text_value' : None,
                 }
 
                 Signature.objects.create(**signature_data)
@@ -1996,6 +2015,51 @@ class EmailListAPIView(APIView):
         email_list = EmailList.objects.filter(docId=docId, emails=recEmail)
         serializer = EmailListSerializer(email_list, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    # def put(self, request, docId, recEmail):
+    #     try:
+    #         print("hello")
+    #         email_list_entry = EmailList.objects.get(docId=docId, emails=recEmail)
+    #         new_status = "approved"
+    #         print("NS", new_status)
+    #         if new_status is None:
+    #             return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+    #         email_list_entry.status = new_status
+    #         email_list_entry.save()
+            
+    #         serializer = EmailListSerializer(email_list_entry)
+    #         print("serializer.data", serializer.data)
+    #         return Response(serializer.data, status=status.HTTP_200_OK)
+    #     except EmailList.DoesNotExist:
+    #         return Response({"error": "EmailList entry not found"}, status=status.HTTP_404_NOT_FOUND)
+    #     except Exception as e:
+    #         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, docId, recEmail):
+        try:
+            print("PUT request received with docId:", docId, "and recEmail:", recEmail)
+            email_list_entry = EmailList.objects.get(docId=docId, emails=recEmail)
+            new_status = "approved"
+            print("New status:", new_status)
+            
+            if new_status is None:
+                print("Status is None")
+                return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            email_list_entry.status = new_status
+            email_list_entry.save()
+            
+            serializer = EmailListSerializer(email_list_entry)
+            print("Serialized data:", serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except EmailList.DoesNotExist:
+            print("EmailList entry not found for docId:", docId, "and recEmail:", recEmail)
+            return Response({"error": "EmailList entry not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print("Exception occurred:", str(e))
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     
 class DocumentRecipientDetailAPIView(APIView):
     def get(self, request, docId, recEmail):
