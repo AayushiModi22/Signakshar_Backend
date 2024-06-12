@@ -13,7 +13,7 @@ SECRET_KEY = 'django-insecure-!!)&me%s=q9b(e)s8nvo33sd*=&epu^2(sqk2rju8*+57wh%3@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.1.51","192.168.1.63","localhost","127.0.0.1","*"]
+ALLOWED_HOSTS = ["192.168.1.58","192.168.1.63","localhost","127.0.0.1","*"]
 # ALLOWED_HOSTS=["*"]
 
 
@@ -179,9 +179,14 @@ EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS=True
 EMAIL_HOST="smtp.gmail.com"
 EMAIL_PORT=587
-EMAIL_HOST_USER='rajeshree24patel@gmail.com'
-EMAIL_HOST_PASSWORD="nblk bbal jreu wosf"
-DEFAULT_FROM_EMAIL='Celery <rajeshree24patel@gmail.com>'
+# EMAIL_HOST_USER='rajeshree24patel@gmail.com'
+# EMAIL_HOST_PASSWORD="nblk bbal jreu wosf"
+# DEFAULT_FROM_EMAIL='Celery <rajeshree24patel@gmail.com>'
+
+EMAIL_HOST_USER='signakshar.qit@gmail.com'
+EMAIL_HOST_PASSWORD="vbhi ywif azxn glxt"
+DEFAULT_FROM_EMAIL='Celery <signakshar.qit@gmail.com>'
+
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
