@@ -63,6 +63,9 @@ class Registerview(APIView):
                 'img_name': data.get('img_name_signature'),
                 'img_enc_key': data.get('img_enc_key'),
                 'user_id_id': new_user.id,
+                'sign_text_color' : data.get('sign_text_color'),
+                'sign_text_font' : data.get('sign_text_font'),
+                'sign_text_value' : data.get('sign_text_value'),
             }
             initial_data = {
                 # 'id': new_user.id,
@@ -71,6 +74,9 @@ class Registerview(APIView):
                 'img_name': data.get('img_name_initials'),
                 'img_enc_key': data.get('img_enc_key'),
                 'user_id_id': new_user.id,
+                'initial_text_color' : data.get('initial_text_color'),
+                'initial_text_font' : data.get('initial_text_font'),
+                'initial_text_value' : data.get('initial_text_value'),
             }
  
             signatureTableData = Signature.objects.create(**signature_data)
@@ -93,14 +99,14 @@ class LoginView(APIView):
         if user is None:
             raise AuthenticationFailed('User not found!')
         if user.signIn_with_google=="Y":
-            raise AuthenticationFailed('You have loged in with google!')
+            raise AuthenticationFailed('You have logged in with google!')
 
         if not user.check_password(password):
             raise AuthenticationFailed('Incorrect password!')
        
         payload = {
             'id': user.id,
-            'exp': datetime.utcnow() + timedelta(hours=24),  # Use datetime.utcnow() for JWT standard
+            'exp': datetime.utcnow() + timedelta(days=1),  # Use datetime.utcnow() for JWT standard
             'iat': datetime.utcnow()
         }
         token = jwt.encode(payload, 'secret', algorithm='HS256')
@@ -153,19 +159,26 @@ class UserUpdateView(APIView):
         user_data = {
             'full_name': request.data.get('user[full_name]'),
             'initial': request.data.get('user[initial]'),
-            'profile_pic': request.data.get('user[profile_pic]')
+            'profile_pic': request.data.get('user[profile_pic]'),
+            'stamp_img_name':request.data.get('user[stamp_img_name]')
         }
         signature_data = {
             'draw_img_name': request.data.get('signature[draw_img_name]'),
             'draw_enc_key': request.data.get('signature[draw_enc_key]'),
             'img_name': request.data.get('signature[img_name]'),
-            'img_enc_key': request.data.get('signature[img_enc_key]')
+            'img_enc_key': request.data.get('signature[img_enc_key]'),
+            'sign_text_color': request.data.get('signature[sign_text_color]'),
+            'sign_text_font': request.data.get('signature[sign_text_font]'),
+            'sign_text_value': request.data.get('signature[sign_text_value]')
         }
         initials_data = {
             'draw_img_name': request.data.get('initials[draw_img_name]'),
             'draw_enc_key': request.data.get('initials[draw_enc_key]'),
             'img_name': request.data.get('initials[img_name]'),
-            'img_enc_key': request.data.get('initials[img_enc_key]')
+            'img_enc_key': request.data.get('initials[img_enc_key]'),
+            'initial_text_color': request.data.get('signature[initial_text_color]'),
+            'initial_text_font': request.data.get('signature[initial_text_font]'),
+            'initial_text_value': request.data.get('signature[initial_text_value]')
         }
 
         user_serializer = UserSerializer(user, data=user_data, partial=True)
@@ -238,32 +251,89 @@ class FetchUserDetailsView(APIView):
 from rest_framework import status
 from rest_framework.response import Response
  
+# class TemplateViewSet(viewsets.ModelViewSet):
+#     queryset = Template.objects.all()
+#     serializer_class = TemplateSerializer
+ 
+#     def get_queryset(self):
+#         user = self.request.user
+#         queryset = Template.objects.filter(created_by=user)
+
+#         return queryset
+ 
+#     def create(self, request, *args, **kwargs):
+#         template_name = request.data.get('templateName')
+#         userid = request.data.get('created_by')
+ 
+#         existing_template = Template.objects.filter(
+#             templateName=template_name, created_by=userid
+#         ).exists()
+ 
+#         if existing_template:
+#             return Response(
+#                 {"error": "Template with the same name already exists for this user."}
+#                 # status=status.HTTP_400_BAD_REQUEST
+#             )
+ 
+#         return super().create(request, *args, **kwargs)
+ 
+#     def get_permissions(self):
+#         if self.request.method == 'POST':
+#             # For POST requests, return an empty list to skip permission checks
+#             return []
+#         else:
+#             # For other request methods (GET, PUT, PATCH, DELETE), apply IsAuthenticated permission
+#             return [IsAuthenticated()]
+ 
+#     def get_authenticators(self):
+#         if self.request.method == 'POST':
+#             # For POST requests, return an empty list to skip authentication
+#             return []
+#         else:
+#             # For other request methods (GET, PUT, PATCH, DELETE), apply JWTAuthentication
+#             return [JWTAuthentication()] 
+
 class TemplateViewSet(viewsets.ModelViewSet):
     queryset = Template.objects.all()
     serializer_class = TemplateSerializer
- 
     def get_queryset(self):
         user = self.request.user
-        queryset = Template.objects.filter(created_by=user)
- 
+        # Subquery to check existence of template_id in TemplateDraggedData
+        dragged_data_exists = TemplateDraggedData.objects.filter(template_id=OuterRef('pk')).values('id')
+
+        # Filter templates created by the user and exist in TemplateDraggedData
+        queryset = Template.objects.filter(
+            created_by=user
+        ).filter(
+            Exists(dragged_data_exists)
+        )
+
+        # Delete templates that do not exist in TemplateDraggedData
+        templates_to_delete = Template.objects.filter(
+            created_by=user
+        ).exclude(
+            Exists(dragged_data_exists)
+        )
+        templates_to_delete.delete()
+
         return queryset
- 
+
     def create(self, request, *args, **kwargs):
         template_name = request.data.get('templateName')
         userid = request.data.get('created_by')
- 
+
         existing_template = Template.objects.filter(
             templateName=template_name, created_by=userid
         ).exists()
- 
+
         if existing_template:
             return Response(
-                {"error": "Template with the same name already exists for this user."}
-                # status=status.HTTP_400_BAD_REQUEST
+                {"error": "Template with the same name already exists for this user."},
+                status=status.HTTP_400_BAD_REQUEST
             )
- 
+
         return super().create(request, *args, **kwargs)
- 
+
     def get_permissions(self):
         if self.request.method == 'POST':
             # For POST requests, return an empty list to skip permission checks
@@ -271,14 +341,16 @@ class TemplateViewSet(viewsets.ModelViewSet):
         else:
             # For other request methods (GET, PUT, PATCH, DELETE), apply IsAuthenticated permission
             return [IsAuthenticated()]
- 
+
     def get_authenticators(self):
         if self.request.method == 'POST':
             # For POST requests, return an empty list to skip authentication
             return []
         else:
             # For other request methods (GET, PUT, PATCH, DELETE), apply JWTAuthentication
-            return [JWTAuthentication()] 
+            return [JWTAuthentication()]
+
+
 class TemplateDraggedDataViewset(viewsets.ModelViewSet):
     queryset=TemplateDraggedData.objects.all()
     serializer_class=TemplateDraggedSerializer
@@ -1718,7 +1790,6 @@ class CurrentUserView(APIView):
 
     def get(self, request):
         serializer = UserSerializer(request.user)
-        print("=====================================",serializer)
         return Response(serializer.data)
     
 class DocAllRecipientById(APIView):
@@ -1756,30 +1827,87 @@ class GetDraggedDataByDocRec(APIView):
 #         serializer = DocumentSerializer(documents, many=True)
 #         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+# ////returns all documents
+# class DocumentView2(APIView):
+#     def post(self, request, format=None):
+#         created_by_you = request.data.get('createdByYou')
+#         created_by_others = request.data.get('createdByOthers')
+#         user_id = request.data.get('userid')
+#         email = User.objects.get(id=user_id).email
+
+#         if not user_id:
+#             return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         if created_by_you and created_by_others:
+#             documents = DocumentTable.objects.filter(
+#                 Q(creator_id=user_id) |
+#                 Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True))
+#             ).select_related('creator_id', 'last_modified_by')
+#         elif created_by_you:
+#             documents = DocumentTable.objects.filter(creator_id=user_id).select_related('creator_id', 'last_modified_by')
+#         elif created_by_others:
+#             documents = DocumentTable.objects.filter(
+#                 Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True)) &
+#                 ~Q(creator_id=user_id)
+#             ).select_related('creator_id', 'last_modified_by')
+#         else:
+#             return Response({"error": "Invalid request parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         serializer = DocumentSerializer(documents, many=True)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ///// returns only those docs whose docid is present in recipientposition data
+from django.db.models import Q, Exists, OuterRef
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import DocumentTable, DocumentRecipientDetail, RecipientPositionData, User
+from .serializers import DocumentSerializer
+
 class DocumentView2(APIView):
     def post(self, request, format=None):
         created_by_you = request.data.get('createdByYou')
         created_by_others = request.data.get('createdByOthers')
         user_id = request.data.get('userid')
-        email = User.objects.get(id=user_id).email
 
         if not user_id:
             return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
+        try:
+            email = User.objects.get(id=user_id).email
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Subquery to check existence of docId in RecipientPositionData
+        recipient_position_data_exists = RecipientPositionData.objects.filter(docId=OuterRef('pk')).values('id')
+
         if created_by_you and created_by_others:
             documents = DocumentTable.objects.filter(
-                Q(creator_id=user_id) |
-                Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True))
+                (Q(creator_id=user_id) |
+                 Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True))) &
+                Exists(recipient_position_data_exists)
             ).select_related('creator_id', 'last_modified_by')
         elif created_by_you:
-            documents = DocumentTable.objects.filter(creator_id=user_id).select_related('creator_id', 'last_modified_by')
+            documents = DocumentTable.objects.filter(
+                Q(creator_id=user_id) &
+                Exists(recipient_position_data_exists)
+            ).select_related('creator_id', 'last_modified_by')
         elif created_by_others:
             documents = DocumentTable.objects.filter(
                 Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True)) &
-                ~Q(creator_id=user_id)
+                ~Q(creator_id=user_id) &
+                Exists(recipient_position_data_exists)
             ).select_related('creator_id', 'last_modified_by')
         else:
             return Response({"error": "Invalid request parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Deleting documents whose docId does not exist in RecipientPositionData
+        documents_to_delete = DocumentTable.objects.filter(
+            ~Exists(recipient_position_data_exists)
+        )
+        documents_to_delete.delete()
 
         serializer = DocumentSerializer(documents, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -1822,8 +1950,6 @@ def save_multiple_doc(request):
                 reminderDays=data['reminderDays'],
             )
             document_id = document.id
-            print("name: ",data['name'])
-            print(data['receipientData'])
             recipients = [
                 BulkPdfRecipientDetail(
                     name=recipient_data['RecipientName'],
@@ -1919,7 +2045,6 @@ import base64
 @require_POST
 def googleLogIn(request):
     data = JSONParser().parse(request)
-    print(data['token'])
     access_token = data['token']
     url = f'https://www.googleapis.com/oauth2/v1/userinfo?access_token={access_token}'
 
@@ -1930,20 +2055,20 @@ def googleLogIn(request):
         # Check if the request was successful
         if response.status_code == 200:
             user_info = response.json()
-            print(user_info)
             profile_pic = user_info.get("picture", "")
-
-            # Fetch and convert profile picture to binary string if it exists
             if profile_pic:
                 image_response = requests.get(profile_pic)
+                print(image_response)
                 if image_response.status_code == 200:
-                    binary_string = base64.b64encode(image_response.content).decode('utf-8')
+                    binary_string = "data:image/png;base64,"+base64.b64encode(image_response.content).decode('utf-8')
+                    print(binary_string)
                 else:
                     binary_string = ""
             else:
                 binary_string = ""
 
             res = User.objects.filter(email=user_info['email']).first()
+            print(binary_string)
             if not res:
                 res = User.objects.create(
                     email=user_info['email'],
@@ -1959,6 +2084,9 @@ def googleLogIn(request):
                     'img_name': None,
                     'img_enc_key': None,
                     'user_id_id': res.id,
+                    'sign_text_color' : None,
+                    'sign_text_font' : None,
+                    'sign_text_value' : None,
                 }
                 initial_data = {
                     'draw_img_name': None, 
@@ -1966,15 +2094,25 @@ def googleLogIn(request):
                     'img_name': None,
                     'img_enc_key': None,
                     'user_id_id': res.id,
+                    'initial_text_color' : None,
+                    'initial_text_font' : None,
+                    'initial_text_value' : None,
                 }
 
                 Signature.objects.create(**signature_data)
                 Initials.objects.create(**initial_data)
-                
-            print(res.id)
+
+            # else:
+            #     print("in update")
+            #     res.email=user_info['email']
+            #     res.password=""
+            #     res.full_name=user_info["name"]
+            #     res.signIn_with_google="Y"
+            #     res.profile_pic=binary_string  
+            #     res.save()
             payload = {
                 'id': res.id,
-                'exp': datetime.utcnow() + timedelta(hours=24),  # Use datetime.utcnow() for JWT standard
+                'exp': datetime.utcnow() + timedelta(days=1),  # Use datetime.utcnow() for JWT standard
                 'iat': datetime.utcnow()
             }
             token = jwt.encode(payload, 'secret', algorithm='HS256')
@@ -2000,9 +2138,7 @@ class EmailListAPIView(APIView):
 class DocumentRecipientDetailAPIView(APIView):
     def get(self, request, docId, recEmail):
         recipient_details = DocumentRecipientDetail.objects.filter(docId=docId, email=recEmail)
-        print("recipient_details", recipient_details)
         serializer = DocumentRecipientSerializer(recipient_details, many=True)
-        print("abcd recipientdetails", serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 from send_mail_app.task import delete_expired_documents
