@@ -1651,7 +1651,7 @@ def schedule_sequence_email(data):
         print("===================4==========================")
         # Calculate the reminder date for 10:00:00 AM based on selected days
         reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-        reminder_datetime_am = reminder_datetime_am.replace(hour=16, minute=40, second=0)
+        reminder_datetime_am = reminder_datetime_am.replace(hour=12, minute=15, second=0)
         print("===================5==========================")
         expiration_days = (scheduled_datetime - timezone.now()).days
         doc = DocumentTable.objects.get(pk=doc_id)
@@ -1676,8 +1676,8 @@ def schedule_sequence_email(data):
         )
 
         crontab_schedule_am, created_am = CrontabSchedule.objects.get_or_create(
-            minute=40,
-            hour=16,
+            minute=15,
+            hour=12,
             day_of_month=reminder_datetime_am.day,
             month_of_year=reminder_datetime_am.month,
             defaults={'timezone': 'Asia/Kolkata'}
