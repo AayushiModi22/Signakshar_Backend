@@ -2135,6 +2135,51 @@ class EmailListAPIView(APIView):
         serializer = EmailListSerializer(email_list, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+    # def put(self, request, docId, recEmail):
+    #     try:
+    #         print("hello")
+    #         email_list_entry = EmailList.objects.get(docId=docId, emails=recEmail)
+    #         new_status = "approved"
+    #         print("NS", new_status)
+    #         if new_status is None:
+    #             return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+    #         email_list_entry.status = new_status
+    #         email_list_entry.save()
+            
+    #         serializer = EmailListSerializer(email_list_entry)
+    #         print("serializer.data", serializer.data)
+    #         return Response(serializer.data, status=status.HTTP_200_OK)
+    #     except EmailList.DoesNotExist:
+    #         return Response({"error": "EmailList entry not found"}, status=status.HTTP_404_NOT_FOUND)
+    #     except Exception as e:
+    #         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, docId, recEmail):
+        try:
+            print("PUT request received with docId:", docId, "and recEmail:", recEmail)
+            email_list_entry = EmailList.objects.get(docId=docId, emails=recEmail)
+            new_status = "approved"
+            print("New status:", new_status)
+            
+            if new_status is None:
+                print("Status is None")
+                return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            email_list_entry.status = new_status
+            email_list_entry.save()
+            
+            serializer = EmailListSerializer(email_list_entry)
+            print("Serialized data:", serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except EmailList.DoesNotExist:
+            print("EmailList entry not found for docId:", docId, "and recEmail:", recEmail)
+            return Response({"error": "EmailList entry not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print("Exception occurred:", str(e))
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    
 class DocumentRecipientDetailAPIView(APIView):
     def get(self, request, docId, recEmail):
         recipient_details = DocumentRecipientDetail.objects.filter(docId=docId, email=recEmail)
