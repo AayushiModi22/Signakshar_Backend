@@ -66,6 +66,7 @@ class Registerview(APIView):
                 'sign_text_color' : data.get('sign_text_color'),
                 'sign_text_font' : data.get('sign_text_font'),
                 'sign_text_value' : data.get('sign_text_value'),
+                'sign_text': data.get('signature_text'),
             }
             initial_data = {
                 # 'id': new_user.id,
@@ -77,6 +78,7 @@ class Registerview(APIView):
                 'initial_text_color' : data.get('initial_text_color'),
                 'initial_text_font' : data.get('initial_text_font'),
                 'initial_text_value' : data.get('initial_text_value'),
+                'initial_text': data.get('initial_text'),
             }
  
             signatureTableData = Signature.objects.create(**signature_data)
