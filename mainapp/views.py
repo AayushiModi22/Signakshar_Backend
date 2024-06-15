@@ -54,6 +54,7 @@ class Registerview(APIView):
         serializer.is_valid(raise_exception=True)
         new_user = serializer.save()
         uid = new_user.id
+
         try:
             data = request.data
             signature_data = {
@@ -66,7 +67,9 @@ class Registerview(APIView):
                 'sign_text_color' : data.get('sign_text_color'),
                 'sign_text_font' : data.get('sign_text_font'),
                 'sign_text_value' : data.get('sign_text_value'),
+                'sign_text': data.get('signature_text'),
             }
+
             initial_data = {
                 # 'id': new_user.id,
                 'draw_img_name': data.get('draw_img_name_initials'),
@@ -77,17 +80,13 @@ class Registerview(APIView):
                 'initial_text_color' : data.get('initial_text_color'),
                 'initial_text_font' : data.get('initial_text_font'),
                 'initial_text_value' : data.get('initial_text_value'),
+                'initial_text': data.get('initial_text'),
             }
- 
             signatureTableData = Signature.objects.create(**signature_data)
             initialTableData = Initials.objects.create(**initial_data)
-           
         except KeyError as e:
             return JsonResponse({'error': str(e)}, status=400)
- 
         return Response(serializer.data)
- 
- 
  
 class LoginView(APIView):
     def post(self, request):
