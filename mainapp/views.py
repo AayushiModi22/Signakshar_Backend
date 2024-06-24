@@ -168,7 +168,8 @@ class UserUpdateView(APIView):
             'img_enc_key': request.data.get('signature[img_enc_key]'),
             'sign_text_color': request.data.get('signature[sign_text_color]'),
             'sign_text_font': request.data.get('signature[sign_text_font]'),
-            'sign_text_value': request.data.get('signature[sign_text_value]')
+            'sign_text_value': request.data.get('signature[sign_text_value]'),
+            'sign_text': request.data.get('signature[signature_text]'),
         }
         initials_data = {
             'draw_img_name': request.data.get('initials[draw_img_name]'),
@@ -177,7 +178,8 @@ class UserUpdateView(APIView):
             'img_enc_key': request.data.get('initials[img_enc_key]'),
             'initial_text_color': request.data.get('signature[initial_text_color]'),
             'initial_text_font': request.data.get('signature[initial_text_font]'),
-            'initial_text_value': request.data.get('signature[initial_text_value]')
+            'initial_text_value': request.data.get('signature[initial_text_value]'),
+            'initial_text': request.data.get('signature[initial_text]'),
         }
 
         user_serializer = UserSerializer(user, data=user_data, partial=True)
