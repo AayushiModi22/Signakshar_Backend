@@ -7,7 +7,6 @@ from .models import *
 #     code = serializers.CharField(required=False)
 #     error = serializers.CharField(required=False)
 
-# /// sakshi serializers
 class EmailListSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailList
