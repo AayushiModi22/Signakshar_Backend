@@ -2,7 +2,7 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+TEMPLATES_DIR = BASE_DIR / 'mainapp' / 'email-format' / 'otp-template'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -52,7 +52,7 @@ ROOT_URLCONF = 'hastakshar_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'mainapp' / 'email-format'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -86,7 +86,7 @@ DATABASES = {
         'USER': 'root',
         'PASSWORD': '',
         'HOST': 'localhost',  # Change this to your MySQL server's hostname or IP address
-        'PORT': '3307',       # Change this to your MySQL server's port
+        'PORT': '3306',       # Change this to your MySQL server's port
     }
 }
 

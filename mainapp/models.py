@@ -36,7 +36,7 @@ class Signature(models.Model):
     sign_text_value= models.CharField(max_length=255, blank=True, null=True)
     sign_text_font= models.CharField(max_length=255, blank=True, null=True)
     sign_text_color= models.CharField(max_length=255, blank=True, null=True)
-
+ 
 class Initials(models.Model):
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     draw_img_name = models.TextField(blank=True, null=True)
