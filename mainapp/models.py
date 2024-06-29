@@ -222,3 +222,14 @@ class UseTemplateRecipient(models.Model):
 
     def str(self):
         return self.RecipientName
+    
+class ApiLog(models.Model):
+    module = models.CharField(max_length=255) # user, doc, temp, otp, aws, admin etc  
+    view_name = models.CharField(max_length=255) #view file's name
+    method = models.CharField(max_length=255) # api name (method/function)
+    log_level = models.CharField(max_length=255) # Status => POST,PUT,DELETE: S=Success, E=Error, GET : I=Information
+    log_message = models.CharField(max_length=255) # response message
+    json_payload = models.TextField(blank=True, null=True) # response message
+    loggedin_user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+    entry_time = models.DateTimeField(default=timezone.now)
+    
