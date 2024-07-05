@@ -79,15 +79,26 @@ WSGI_APPLICATION = 'hastakshar_backend.wsgi.application'
 #     }
 # }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'hastakshar',
+#         'USER': 'root',
+#         'PASSWORD': '',
+#         'HOST': 'localhost',  # Change this to your MySQL server's hostname or IP address
+#         'PORT': '3307',       # Change this to your MySQL server's port
+#     }
+# }
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hastakshar',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': 'localhost',  # Change this to your MySQL server's hostname or IP address
-        'PORT': '3307',       # Change this to your MySQL server's port
-    }
+        'NAME': 'signakshar',
+        'USER': 'avnadmin',
+        'PASSWORD': 'AVNS_EUHuRflCHDzhA37zq_5',
+        'HOST': 'mysql-31695c3c-signakshar-qit.j.aivencloud.com', 
+        'PORT': '25587',      
+    }
 }
 
 
