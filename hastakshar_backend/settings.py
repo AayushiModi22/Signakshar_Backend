@@ -97,7 +97,7 @@ DATABASES = {
         'USER': 'avnadmin',
         'PASSWORD': 'AVNS_EUHuRflCHDzhA37zq_5',
         'HOST': 'mysql-31695c3c-signakshar-qit.j.aivencloud.com', 
-        'PORT': '25587',      
+        'PORT': '25587'  
     }
 }
 
