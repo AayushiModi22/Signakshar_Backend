@@ -25,13 +25,9 @@ def send_emailnew(recipient, subject, message):
 
 
 def send_email_with_otp(recipient_email, otp, username):
-    # Render the HTML content using the template
-    # html_content = render_to_string('otp-template/otp-template.html', {'otp': otp})
     html_content = render_to_string(
         'otp-template/otp-template.html', {'otp': otp, 'username': username})
     text_content = strip_tags(html_content)
-
-    # Create the email
     email = EmailMultiAlternatives(
         subject='Your OTP Code',
         body=text_content,
@@ -39,8 +35,6 @@ def send_email_with_otp(recipient_email, otp, username):
         to=[recipient_email]
     )
     email.attach_alternative(html_content, "text/html")
-
-    # Send the email
     email.send()
 
 

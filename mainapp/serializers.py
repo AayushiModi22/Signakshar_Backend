@@ -43,7 +43,6 @@ class TemplateRecipientSerializer(serializers.ModelSerializer):
     class Meta:
         model = TemplateRecipient
         fields = '__all__'
-        print("Fields:", fields) 
 
 class DocumentTableSerializer(serializers.ModelSerializer):
     class Meta:

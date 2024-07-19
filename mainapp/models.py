@@ -66,7 +66,7 @@ class DocumentTable(models.Model):
     req_type = models.CharField(max_length=1,default='N')  
     Schedule_type = models.CharField(max_length=1,default='N')  
     last_modified_date_time = models.DateTimeField(default=timezone.now)
-    last_modified_by = models.ForeignKey(User, default=1,on_delete=models.CASCADE, related_name='documents_last_modified')
+    last_modified_by = models.ForeignKey(User,on_delete=models.CASCADE, related_name='documents_last_modified',null=True)
     expirationDateTime = models.DateTimeField(default=timezone.now()+timedelta(days=7))
     reminderDays = models.IntegerField()
 

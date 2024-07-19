@@ -35,6 +35,9 @@ from django.http import HttpResponseRedirect
 # from django.shortcuts import get_object_or_404
 from datetime import time
 from django.shortcuts import redirect
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 logger = logging.getLogger(__name__)
 
@@ -368,13 +371,17 @@ def get_doc(request):
 @csrf_exempt
 def save_recipient_position_data(request):
     try:
-        print("doc_views save_recipient_position_data")
         if request.method == 'POST':
             data = JSONParser().parse(request)
             newData1 = data["recipient_data"]
             Expiration = data["Expiration"]
             docId = data["docId"]
             s_send = data["s_send"]
+            last_modified_by_id=data["last_modified_by_id"]
+            doc = DocumentTable.objects.get(pk=docId)
+            doc.last_modified_by_id = last_modified_by_id
+            doc.save()
+
             i = 0
             for newData in newData1:
                 i = i+1
@@ -405,37 +412,43 @@ def save_recipient_position_data(request):
             doc = DocumentTable.objects.get(pk=docId)
             email_list = list(email_list)
             recipients = DocumentRecipientDetail.objects.filter(docId=docId)
+            print(recipients)
             email_messages = []
             for rec in recipients:
                 if rec.roleId_id == 1:
                     url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=signer&did={docId}&rid={rec.id}"
-                    message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link for signing the pdf : {url} \nIgonre this reminder if you have already signed the document."
+                    msg = doc.email_msg
+                    message = doc.email_msg + "http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={docId}&rid={rec.id}"
+                    recRole='Sign'
                 elif rec.roleId_id == 2:
                     url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={docId}&rid={rec.id}"
-                    message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link for viewing the pdf : {url} \n Igonre this reminder if you have already viewed the document."
+                    msg = doc.email_msg
+                    message = doc.email_msg + "http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={docId}&rid={rec.id}"
+                    recRole='View'
                 else:
                     continue  
                 email_messages.append({
                     'email': rec.email,
                     'subject': doc.email_title,
                     'message': message,
+                    'msg': msg,
+                    'url':url,
+                    'recRole':recRole
                 })
-
-               
 
                 # context = {
                 #     'username': rec.email.split('@')[0],  # Assuming username is the part before @ in email
                 #     'reciever_link': url
                 # }
                 # username = rec.email.split('@')[0]
-                # html_content = render_to_string('otp-template/document-signing.html', {'reciever_link': message, 'username': username})
+                # html_content = render_to_string('otp-template/document-signing.html', {'reciever_link': 'https://www.google.com/', 'username': username})
                 # text_content = strip_tags(html_content)
 
                 # email_messages.append({
                 #     'email': rec.email,
                 #     'subject': doc.email_title,
                 #     'message': text_content,
-                #     'html_message': html_content
+                #     # 'html_message': html_content
                 # })
 
             payload = {
@@ -532,20 +545,35 @@ def get_email_list(request):
 
 def none_send_email(email_messages,doc):
     try:
-        print("doc_views none_send_email")
         for email_message in email_messages:
             recipient_email = email_message.get('email')
-            subject = email_message.get('subject', '')
-            message = email_message.get('message', '')
+            subject = email_message.get('subject')
+            msg = email_message.get('msg')
+            message = email_message.get('message')
+            url=email_message.get('url')
+            username = recipient_email.split('@')[0]
+            recRole=email_message.get('recRole')
             try:
                 email_obj = EmailList.objects.create(emails=recipient_email,status="sent", docId=doc)
                 email_obj.save()
             finally:
                 schedule_sequence_email({"email":recipient_email,"reminderDays":doc.reminderDays,"scheduledDate":doc.expirationDateTime,"doc_id":doc.id,"title":subject, "message":message})
-                send_mail(subject, message, settings.EMAIL_HOST_USER, [recipient_email])
+                print("recRole",recRole)
+                html_content =render_to_string('otp-template/document-signing.html', {'reciever_link': url, 'username': username,'message':msg,'recRole':recRole})
+                text_content = strip_tags(html_content)
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=text_content,
+                    from_email=settings.EMAIL_HOST_USER,
+                    to=[recipient_email]
+                )
+                email.attach_alternative(html_content, "text/html")
+                email.send()
+                # send_mail(subject, message, settings.EMAIL_HOST_USER, [recipient_email])
         return JsonResponse({'success': True, 'message': 'Emails sent successfully'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+   
     
 def none_send_email_schedule(email_messages,doc,datetime):
     try:
@@ -618,7 +646,6 @@ def send_mail_to_sequence_recipient_schedule(email_obj,subject,message,doc_id,sc
 
 def sequence_emails(data):
     try:
-        print("doc_views sequence_emails")
         recipient_list = data["recipient_list"]
         if not recipient_list:
             return JsonResponse({"success": False, "message": "Recipient list is empty"}, status=400)
@@ -764,7 +791,10 @@ def sequence_email_approval(request):
         data = JSONParser().parse(request)
         doc_id = data["doc_id"]
         rid = data["email_id"]
+        lastModID = data["lastModID"]
         doc = DocumentTable.objects.get(pk=doc_id)
+        doc.last_modified_by_id = lastModID
+        doc.save()
         email_id = DocumentRecipientDetail.objects.filter(id=rid, docId=doc_id).first()
  
         if doc.req_type == "S":

@@ -11,7 +11,7 @@ from .myviews import document_views
 from .myviews.document_views import DocumentTableViewset,DocumentByDocId,DocAllRecipientById,GetDraggedDataByDocRec,EmailListAPIView,DocumentRecipientDetailAPIView,FetchRecipientFullDetails,trigger_delete_expired_documents
 from .myviews.document_views import send_email,sequence_email_approval,get_doc
 from .myviews.template_views import TemplateViewSet,TemplateDraggedDataViewset,GetDraggedDataByTempRec,deleteTemplate,TemplateRecipientViewset,UseTemplateRecipientViewSet,use_template_recipient_didTidCid,TemplateRecipientByTemplateId,TemplateByTemplateId,updateTemplateDraggedData
-from .myviews.aws_views import upload_file_to_s3,fetch_pdf_from_s3,generate_presigned_url,delete_file_from_s3
+from .myviews.aws_views import upload_file_to_s3,upload_template_file_to_s3,fetch_pdf_from_s3,generate_presigned_url,delete_file_from_s3,fetch_templateFile_from_s3
 from .myviews.dashboard_views import getRecipientCount,getPendingRecipientCount,getRecipientDetails,getStatus,deleteDocumentView,DocumentView2
 from .myviews import bulkpdfsigning_views
 from .myviews.apilog_views import ApiLogViewset
@@ -67,7 +67,9 @@ urlpatterns = [
     
     # aws
     path('upload_file_to_s3/', upload_file_to_s3, name='upload_file_to_s3'),
+    path('upload_template_file_to_s3/', upload_template_file_to_s3, name='upload_template_file_to_s3'),
     path('fetch_pdf_from_s3/<str:bucket_name>/<str:file_name>/', fetch_pdf_from_s3, name='fetch_pdf_from_s3'),
+    path('fetch_templateFile_from_s3/<str:bucket_name>/<str:template_bucket_name>/<str:file_name>/', fetch_templateFile_from_s3, name='fetch_templateFile_from_s3'),
     path('generate_presigned_url/<str:bucket_name>/<str:file_name>/', generate_presigned_url, name='generate_presigned_url'),
     path('delete_file_from_s3/', delete_file_from_s3, name='delete_file_from_s3'),
 
