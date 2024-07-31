@@ -90,10 +90,25 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'signakshar',
+#         'USER': 'avnadmin',
+#         'PASSWORD': 'AVNS_EUHuRflCHDzhA37zq_5',
+#         'HOST': 'mysql-31695c3c-signakshar-qit.j.aivencloud.com', 
+#         'PORT': '25587',      
+#     }
+# }
 
 # ///// aws
-AWS_ACCESS_KEY_ID = 'AKIA2P56CA5N2YZNAK26'
-AWS_SECRET_ACCESS_KEY = '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'
+# AWS_ACCESS_KEY_ID = 'AKIA2P56CA5N2YZNAK26'
+# AWS_SECRET_ACCESS_KEY = '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'
+# AWS_REGION = 'ap-south-1'
+
+# //new AWS
+AWS_ACCESS_KEY_ID = 'AKIA2P56CA5N7CTQJOPQ'
+AWS_SECRET_ACCESS_KEY = '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'
 AWS_REGION = 'ap-south-1'
 
 
@@ -127,7 +142,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600 #100MB
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
@@ -141,6 +156,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
     ],
 }
 AUTHENTICATION_BACKENDS = [

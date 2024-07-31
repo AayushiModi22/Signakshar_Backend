@@ -223,13 +223,31 @@ class UseTemplateRecipient(models.Model):
     def str(self):
         return self.RecipientName
     
-class ApiLog(models.Model):
-    module = models.CharField(max_length=255) # user, doc, temp, otp, aws, admin etc  
-    view_name = models.CharField(max_length=255) #view file's name
-    method = models.CharField(max_length=255) # api name (method/function)
-    log_level = models.CharField(max_length=255) # Status => POST,PUT,DELETE: S=Success, E=Error, GET : I=Information
-    log_message = models.CharField(max_length=255) # response message
-    json_payload = models.TextField(blank=True, null=True) # response message
-    loggedin_user_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    entry_time = models.DateTimeField(default=timezone.now)
-    
+# class ApiLog(models.Model):
+#     module = models.CharField(max_length=255) # user, doc, temp, otp, aws, admin etc  
+#     view_name = models.CharField(max_length=255) #view file's name
+#     method = models.CharField(max_length=255) # api name (method/function)
+#     log_level = models.CharField(max_length=255) # Status => POST,PUT,DELETE: S=Success, E=Error, GET : I=Information
+#     log_message = models.CharField(max_length=255) # response message
+#     json_payload = models.TextField(blank=True, null=True) # response message
+#     loggedin_user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+#     entry_time = models.DateTimeField(default=timezone.now)
+
+from django.db import models
+
+class NewAPILog(models.Model):
+    log_id = models.AutoField(primary_key=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    user_id = models.IntegerField(null=True, blank=True)
+    endpoint = models.CharField(max_length=255)
+    method = models.CharField(max_length=10)
+    request_headers = models.TextField(null=True, blank=True)
+    request_body = models.TextField(null=True, blank=True)
+    response_status_code = models.IntegerField()
+    response_body = models.TextField(null=True, blank=True)
+    response_time = models.IntegerField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
+    error_code = models.CharField(max_length=50, null=True, blank=True)
+

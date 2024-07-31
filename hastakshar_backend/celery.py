@@ -24,6 +24,6 @@ app.conf.beat_schedule = {
     },
     'delete-expired-documents': {
         'task': 'send_mail_app.task.delete_expired_documents',
-        'schedule': crontab(hour=12, minute=30),  # Run daily at midnight
+        'schedule': crontab(hour=15, minute=00),  # Run daily at midnight
     },
 }

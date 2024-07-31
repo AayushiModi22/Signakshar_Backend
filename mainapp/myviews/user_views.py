@@ -19,6 +19,8 @@ import base64
 from rest_framework.parsers import JSONParser
 from rest_framework.parsers import MultiPartParser, FormParser
 from social_django.utils import psa
+from ..decorators.logging import log_api_request 
+from django.utils.decorators import method_decorator
 
 class JWTAuthentication(BaseAuthentication):
     def authenticate(self, request):
@@ -42,6 +44,10 @@ class JWTAuthentication(BaseAuthentication):
         return (user, token)
  
 class Registerview(APIView):
+    @method_decorator(log_api_request)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
     def post(self, request):
         print("user_views Registerview")
         serializer = UserSerializer(data=request.data)
@@ -81,10 +87,14 @@ class Registerview(APIView):
         except KeyError as e:
             return JsonResponse({'error': str(e)}, status=400)
         return Response(serializer.data)
- 
+
+# @log_api_request
 class LoginView(APIView):
+    @method_decorator(log_api_request)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
     def post(self, request):
-        print("user_views login")
         email = request.data['email']
         password = request.data['password']
  
@@ -110,21 +120,47 @@ class LoginView(APIView):
         response.data = {'jwt': token}
         return response
 
+
+# class LoginView(APIView):
+#     @method_decorator(log_api_request)
+#     def dispatch(self, request, *args, **kwargs):
+#         return super().dispatch(request, *args, **kwargs)
+#     def post(self, request):
+#         email = request.data['email']
+#         password = request.data['password']
+    
+#         user = User.objects.filter(email=email).first()
+    
+#         if user is None:
+#             raise AuthenticationFailed('User not found!')
+#         if user.signIn_with_google == "Y":
+#             raise AuthenticationFailed('You have logged in with Google!')
+    
+#         if not user.check_password(password):
+#             raise AuthenticationFailed('Incorrect password!')
+       
+#         payload = {
+#             'id': user.id,
+#             'exp': datetime.utcnow() + timedelta(days=1),
+#             'iat': datetime.utcnow()
+#         }
+#         token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+    
+#         response = Response()
+#         response.set_cookie(key='jwt', value=token, httponly=True)
+#         response.data = {'jwt': token}
+#         return response
+
 @csrf_exempt
 @require_POST
+@log_api_request
 def googleLogIn(request):
-    print("user_views googleLogIn")
     data = JSONParser().parse(request)
     access_token = data['token']
     url = f'https://www.googleapis.com/oauth2/v1/userinfo?access_token={access_token}'
 
     try:
-        print("user_views googleLogIn...")
-
-        # Make the GET request to Google API
         response = requests.get(url)
-
-        # Check if the request was successful
         if response.status_code == 200:
             user_info = response.json()
             profile_pic = user_info.get("picture", "")
@@ -175,24 +211,12 @@ def googleLogIn(request):
 
                 Signature.objects.create(**signature_data)
                 Initials.objects.create(**initial_data)
-
-            # else:
-            #     print("in update")
-            #     res.email=user_info['email']
-            #     res.password=""
-            #     res.full_name=user_info["name"]
-            #     res.signIn_with_google="Y"
-            #     res.profile_pic=binary_string  
-            #     res.save()
             payload = {
                 'id': res.id,
                 'exp': datetime.utcnow() + timedelta(days=1),  # Use datetime.utcnow() for JWT standard
                 'iat': datetime.utcnow()
             }
             token = jwt.encode(payload, 'secret', algorithm='HS256')
-    
-            # response2 = Response()
-            # response2.set_cookie(key='jwt', value=token, httponly=True)
             resData = {'jwt': token}
             return JsonResponse(resData)
         else:
@@ -205,8 +229,11 @@ def googleLogIn(request):
      
      
 class logoutview(APIView):
+    @method_decorator(log_api_request)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
     def post(self, request):
-        print("user_views logout")
         response = Response()
         response.delete_cookie('jwt')
         response.data = {'message': 'success'}
@@ -238,6 +265,11 @@ class UserUpdateView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+
+    
+    @method_decorator(log_api_request)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def put(self, request):
         print("user_views UserUpdateView")
@@ -339,7 +371,6 @@ class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        print("user_views CurrentUserView")
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 

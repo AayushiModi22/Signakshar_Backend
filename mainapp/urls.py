@@ -11,17 +11,17 @@ from .myviews import document_views
 from .myviews.document_views import DocumentTableViewset,DocumentByDocId,DocAllRecipientById,GetDraggedDataByDocRec,EmailListAPIView,DocumentRecipientDetailAPIView,FetchRecipientFullDetails,trigger_delete_expired_documents
 from .myviews.document_views import send_email,sequence_email_approval,get_doc
 from .myviews.template_views import TemplateViewSet,TemplateDraggedDataViewset,GetDraggedDataByTempRec,deleteTemplate,TemplateRecipientViewset,UseTemplateRecipientViewSet,use_template_recipient_didTidCid,TemplateRecipientByTemplateId,TemplateByTemplateId,updateTemplateDraggedData
-from .myviews.aws_views import upload_file_to_s3,upload_template_file_to_s3,fetch_pdf_from_s3,generate_presigned_url,delete_file_from_s3,fetch_templateFile_from_s3
+from .myviews.aws_views import upload_file_to_s3,upload_template_file_to_s3,fetch_pdf_from_s3,generate_presigned_url,delete_file_from_s3,fetch_templateFile_from_s3,delete_template_from_s3
 from .myviews.dashboard_views import getRecipientCount,getPendingRecipientCount,getRecipientDetails,getStatus,deleteDocumentView,DocumentView2
 from .myviews import bulkpdfsigning_views
-from .myviews.apilog_views import ApiLogViewset
+# from .myviews.apilog_views import ApiLogViewset
 
 urlpatterns = [
     # user
     path('register/', Registerview.as_view()),
-    path('login/', LoginView.as_view()),
+    path('login/', LoginView.as_view(),name='login'),
     path('googleLogIn/',user_views.googleLogIn, name="googleLogIn"),
-    path('logout/', logoutview.as_view()),
+    path('logout/', logoutview.as_view(),name="logout"),
     path('user/', UserView.as_view()),
     path('user/update/', UserUpdateView.as_view(), name='user-update'),
     path('user-details/<int:user_id>/', FetchUserDetailsView.as_view(), name='fetch_user_details'),
@@ -36,6 +36,7 @@ urlpatterns = [
     # template
     path('templateapi/', TemplateViewSet.as_view({'get': 'list', 'post': 'create'}), name='template_api'),
     path('templateDraggedDataApi/', TemplateDraggedDataViewset.as_view({'get': 'list', 'post': 'create'}), name='draggeddata_api'),
+    path('templateDraggedDataApi/<int:pk>/', TemplateDraggedDataViewset.as_view({'delete': 'destroy'}), name='draggeddata_delete_api'),
     path('getDraggedDataByTempRec/<int:template_rec_id>/', GetDraggedDataByTempRec.as_view(), name='get_dragged_data_by_temp_rec'),
     path('deleteTemplate/',deleteTemplate.as_view()),
     path('TemplateRecipient/', TemplateRecipientViewset.as_view({'get': 'list', 'post': 'create'}), name='tempRec_api'),
@@ -72,6 +73,7 @@ urlpatterns = [
     path('fetch_templateFile_from_s3/<str:bucket_name>/<str:template_bucket_name>/<str:file_name>/', fetch_templateFile_from_s3, name='fetch_templateFile_from_s3'),
     path('generate_presigned_url/<str:bucket_name>/<str:file_name>/', generate_presigned_url, name='generate_presigned_url'),
     path('delete_file_from_s3/', delete_file_from_s3, name='delete_file_from_s3'),
+    path('delete_template_from_s3/', delete_template_from_s3, name='delete_template_from_s3'),
 
     # dashboard
     path('getRecipientCount/',getRecipientCount.as_view()),
@@ -86,5 +88,5 @@ urlpatterns = [
     
     # Log
     # path('apilog/', ApiLogViewset.as_view({'get': 'list', 'post': 'create'}), name='apilog'),
-    path('apilog/', ApiLogViewset.as_view({'get': 'list', 'post': 'create'}), name='apilog'),
+    # path('apilog/', ApiLogViewset.as_view({'get': 'list', 'post': 'create'}), name='apilog'),
 ]

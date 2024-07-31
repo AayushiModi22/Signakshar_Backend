@@ -86,7 +86,11 @@ class BulkDocumentTableSerializer(serializers.ModelSerializer):
         model = BulkPdfDocumentTable
         fields = '__all__'
 
+# class ApiLogSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = ApiLog
+#         fields = '__all__'
 class ApiLogSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ApiLog
+        model = NewAPILog
         fields = '__all__'

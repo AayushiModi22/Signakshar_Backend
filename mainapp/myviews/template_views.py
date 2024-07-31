@@ -14,26 +14,82 @@ from django.shortcuts import get_object_or_404
 
 from mainapp.myviews.user_views import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
-
+from rest_framework.exceptions import NotFound
 from mainapp.models import Template,TemplateDraggedData,UseTemplateRecipient
 from mainapp.serializers import TemplateSerializer,TemplateDraggedData,TemplateRecipient,TemplateDraggedSerializer,UseTemplateRecipient,UseTemplateRecipientSerializer,TemplateRecipientSerializer
+from ..decorators.logging import log_api_request 
+from django.utils.decorators import method_decorator
+
+# class TemplateViewSet(viewsets.ModelViewSet):
+#     queryset = Template.objects.all()
+#     serializer_class = TemplateSerializer
+    
+#     def get_queryset(self):
+#         user = self.request.user
+#         # Subquery to check existence of template_id in TemplateDraggedData
+#         dragged_data_exists = TemplateDraggedData.objects.filter(template_id=OuterRef('pk')).values('id')
+
+#         # Filter templates created by the user and exist in TemplateDraggedData
+#         queryset = Template.objects.filter(
+#             created_by=user
+#         ).filter(
+#             Exists(dragged_data_exists)
+#         )
+
+#         # Delete templates that do not exist in TemplateDraggedData
+#         templates_to_delete = Template.objects.filter(
+#             created_by=user
+#         ).exclude(
+#             Exists(dragged_data_exists)
+#         )
+#         templates_to_delete.delete()
+
+#         return queryset
+
+#     def create(self, request, *args, **kwargs):
+#         template_name = request.data.get('templateName')
+#         userid = request.data.get('created_by')
+
+#         existing_template = Template.objects.filter(
+#             templateName=template_name, created_by=userid
+#         ).exists()
+
+#         if existing_template:
+#             return Response(
+#                 {"error": "Template with the same name already exists for this user."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         return super().create(request, *args, **kwargs)
+
+#     def get_permissions(self):
+#         if self.request.method == 'POST':
+#             # For POST requests, return an empty list to skip permission checks
+#             return []
+#         else:
+#             # For other request methods (GET, PUT, PATCH, DELETE), apply IsAuthenticated permission
+#             return [IsAuthenticated()]
+
+#     def get_authenticators(self):
+#         if self.request.method == 'POST':
+#             # For POST requests, return an empty list to skip authentication
+#             return []
+#         else:
+#             # For other request methods (GET, PUT, PATCH, DELETE), apply JWTAuthentication
+#             return [JWTAuthentication()]
 
 class TemplateViewSet(viewsets.ModelViewSet):
     queryset = Template.objects.all()
     serializer_class = TemplateSerializer
+
     def get_queryset(self):
         user = self.request.user
-        # Subquery to check existence of template_id in TemplateDraggedData
         dragged_data_exists = TemplateDraggedData.objects.filter(template_id=OuterRef('pk')).values('id')
-
-        # Filter templates created by the user and exist in TemplateDraggedData
         queryset = Template.objects.filter(
             created_by=user
         ).filter(
             Exists(dragged_data_exists)
         )
-
-        # Delete templates that do not exist in TemplateDraggedData
         templates_to_delete = Template.objects.filter(
             created_by=user
         ).exclude(
@@ -69,17 +125,30 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
     def get_authenticators(self):
         if self.request.method == 'POST':
-            # For POST requests, return an empty list to skip authentication
             return []
         else:
-            # For other request methods (GET, PUT, PATCH, DELETE), apply JWTAuthentication
             return [JWTAuthentication()]
+
+    @method_decorator(log_api_request) 
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
 
 class TemplateDraggedDataViewset(viewsets.ModelViewSet):
-    queryset=TemplateDraggedData.objects.all()
-    serializer_class=TemplateDraggedSerializer
+    queryset = TemplateDraggedData.objects.all()
+    serializer_class = TemplateDraggedSerializer
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_200_OK)
+    def perform_destroy(self, instance):
+        # Custom delete logic if needed
+        instance.delete()
+    @method_decorator(log_api_request)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
  
+#  ////not used
 class GetDraggedDataByTempRec(APIView):
     def get(self, request, template_rec_id):
         template_rec = get_object_or_404(TemplateRecipient, id=template_rec_id)
@@ -89,9 +158,14 @@ class GetDraggedDataByTempRec(APIView):
  
  
 class TemplateRecipientViewset(viewsets.ModelViewSet):
-    queryset=TemplateRecipient.objects.all()
-    serializer_class=TemplateRecipientSerializer
+    queryset = TemplateRecipient.objects.all()
+    serializer_class = TemplateRecipientSerializer
+
+    @method_decorator(log_api_request)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
  
+# ////not used
 class UseTemplateRecipientViewSet(viewsets.ModelViewSet):
     queryset= UseTemplateRecipient.objects.all()
     serializer_class=UseTemplateRecipientSerializer
@@ -116,6 +190,7 @@ def use_template_recipient_didTidCid(request, document_id, template_id, creator_
 class TemplateRecipientByTemplateId(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+
     def get(self, request, template_id):
         try:
             # Retrieve TemplateDraggedData objects based on the provided template_id
@@ -125,9 +200,11 @@ class TemplateRecipientByTemplateId(APIView):
         except TemplateRecipient.DoesNotExist:
             return Response({"error": "Template Recipient Data not found for the given template_id"}, status=status.HTTP_404_NOT_FOUND)
   
+# //// not used 
 class TemplateByTemplateId(APIView):
     # authentication_classes = [JWTAuthentication]  
     # permission_classes = [IsAuthenticated]
+    @method_decorator(log_api_request)
     def get(self, request, template_id):
         try:
             # Retrieve Template object based on the provided template_id
@@ -138,17 +215,31 @@ class TemplateByTemplateId(APIView):
             return JsonResponse({"error": "Template Data not found for the given template_id"}, status=status.HTTP_404_NOT_FOUND)
               
 class deleteTemplate(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(log_api_request)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
     def post(self, request):
-        templateID = request.data.get('templateID')
-        if not templateID:
-            return Response({"error": "Template ID not provided"}, status=status.HTTP_400_BAD_REQUEST)
-        template = get_object_or_404(Template, template_id=templateID)
-        template.delete()
-        return Response({"message": "Template deleted successfully","status":200}, status=status.HTTP_200_OK)
+        try:
+            templateID = request.data.get('templateID')
+            if not templateID:
+                return Response({"error": "Template ID not provided"}, status=status.HTTP_400_BAD_REQUEST)
+            template = get_object_or_404(Template, template_id=templateID)            
+            template.delete()
+            return Response({"message": "Template deleted successfully", "status": 200}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 from rest_framework.decorators import api_view
+
 @csrf_exempt
-@api_view(['PUT'])
+@api_view(['PATCH'])
+@log_api_request
 def updateTemplateDraggedData(request, pk):
     try:
         dragged_data = TemplateDraggedData.objects.get(pk=pk)
