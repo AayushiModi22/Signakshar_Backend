@@ -1850,89 +1850,7 @@ def sequence_email_approval(request):
         print("Exception occurred:", str(e))
         return JsonResponse({"error": str(e)}, status=400)
 
-def schedule_sequence_email(data):
-    try:
-        recipient_email = data['email']
-        scheduled_date = data['scheduledDate']
-        reminder_days = data['reminderDays']
-        doc_id = data['doc_id']
-        message = data['message']
-        title = data['title']
-        html_content = data.get('html_content', '')  # Ensure html_content is retrieved
-       
-        # Convert scheduled_date to datetime object
-        if isinstance(scheduled_date, str):
-            scheduled_datetime = datetime.strptime(scheduled_date, '%Y-%m-%d %H:%M:%S%z')
-        elif isinstance(scheduled_date, datetime):
-            scheduled_datetime = scheduled_date
-        else:
-            raise ValueError("scheduled_date must be a string or datetime object")
-       
-        # Ensure scheduled_datetime is timezone-aware
-        scheduled_datetime = timezone.make_aware(scheduled_datetime, timezone.get_current_timezone())
-       
-        # Calculate reminder dates
-        reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
-        reminder_datetime_pm = reminder_datetime_pm.replace(hour=12, minute=15, second=0)
-       
-        reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-        reminder_datetime_am = reminder_datetime_am.replace(hour=12, minute=00, second=0)
-       
-        expiration_days = (scheduled_datetime - timezone.now()).days
-        doc = DocumentTable.objects.get(pk=doc_id)
-       
-        # Create ScheduledEmail instance
-        scheduled_email = ScheduledEmail.objects.create(
-            recipient_email=recipient_email,
-            scheduled_time=scheduled_datetime,
-            expiration_days=expiration_days,
-            reminder_date_pm=reminder_datetime_pm,
-            reminder_date_am=reminder_datetime_am,
-            doc_id=doc
-        )
-       
-        # Create CrontabSchedules for reminder times
-        crontab_schedule_pm, _ = CrontabSchedule.objects.get_or_create(
-            minute=reminder_datetime_pm.minute,
-            hour=reminder_datetime_pm.hour,
-            day_of_month=reminder_datetime_pm.day,
-            month_of_year=reminder_datetime_pm.month,
-            defaults={'timezone': 'Asia/Kolkata'}
-        )
-       
-        crontab_schedule_am, _ = CrontabSchedule.objects.get_or_create(
-            minute=reminder_datetime_am.minute,
-            hour=reminder_datetime_am.hour,
-            day_of_month=reminder_datetime_am.day,
-            month_of_year=reminder_datetime_am.month,
-            defaults={'timezone': 'Asia/Kolkata'}
-        )
-       
-        # Create PeriodicTasks
-        task_name_pm = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_pm.strftime('%Y_%m_%d_%H_%M')}_pm"
-        task_name_am = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_am.strftime('%Y_%m_%d_%H_%M')}_am"
-       
-        PeriodicTask.objects.update_or_create(
-            name=task_name_pm,
-            defaults={
-                'crontab': crontab_schedule_pm,
-                'task': 'send_mail_app.task.send_mail_func',
-                'args': json.dumps([scheduled_email.id, title, message, html_content]),
-            }
-        )
-   
-        PeriodicTask.objects.update_or_create(
-            name=task_name_am,
-            defaults={
-                'crontab': crontab_schedule_am,
-                'task': 'send_mail_app.task.send_mail_func',
-                'args': json.dumps([scheduled_email.id, title, message, html_content]),
-            }
-        )
 
-        return JsonResponse({'message': 'Scheduled Email'}, status=200)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
 
 def schedule_sequence_email(data):
     try:
@@ -1966,7 +1884,7 @@ def schedule_sequence_email(data):
         print("===================3==========================")
         # Calculate the reminder date for 4:00:00 PM
         reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
-        reminder_datetime_pm = reminder_datetime_pm.replace(hour=12, minute=30, second=0)
+        reminder_datetime_pm = reminder_datetime_pm.replace(hour=14, minute=48, second=0)
         print("===================4==========================")
         # Calculate the reminder date for 10:00:00 AM based on selected days--------change hereeeeeeeeeeeeeee
         reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
@@ -1987,8 +1905,8 @@ def schedule_sequence_email(data):
         print("==================***********************************************==")
         # Create CrontabSchedules for both reminder times
         crontab_schedule_pm, created_pm = CrontabSchedule.objects.get_or_create(
-            minute=30,
-            hour=12,
+            minute=48,
+            hour=14,
             day_of_month=reminder_datetime_pm.day,
             month_of_year=reminder_datetime_pm.month,
             defaults={'timezone': 'Asia/Kolkata'}
