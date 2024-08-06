@@ -14,6 +14,7 @@ from .myviews.template_views import TemplateViewSet,TemplateDraggedDataViewset,G
 from .myviews.aws_views import upload_file_to_s3,upload_template_file_to_s3,fetch_pdf_from_s3,generate_presigned_url,delete_file_from_s3,fetch_templateFile_from_s3,delete_template_from_s3
 from .myviews.dashboard_views import getRecipientCount,getPendingRecipientCount,getRecipientDetails,getStatus,deleteDocumentView,DocumentView2
 from .myviews import bulkpdfsigning_views
+from .myviews import leadsquare_views
 # from .myviews.apilog_views import ApiLogViewset
 
 urlpatterns = [
@@ -85,6 +86,7 @@ urlpatterns = [
 
     #bulk pdf signing
     path('save_multiple_doc/',bulkpdfsigning_views.save_multiple_doc),
+    path('send_test_email/',leadsquare_views.send_test_email, name="sendmail")
     
     # Log
     # path('apilog/', ApiLogViewset.as_view({'get': 'list', 'post': 'create'}), name='apilog'),
