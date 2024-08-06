@@ -11,60 +11,8 @@ from mainapp.serializers import DocumentSerializer,DocumentRecipientSerializer,E
 from ..decorators.logging import log_api_request 
 from django.utils.decorators import method_decorator
 
-# class DocumentView2(APIView):
-#     @method_decorator(log_api_request)
-#     def post(self, request, format=None):
-#         print("dashboard_views DocumentView2")
-#         created_by_you = request.data.get('createdByYou')
-#         created_by_others = request.data.get('createdByOthers')
-#         user_id = request.data.get('userid')
-
-#         if not user_id:
-#             return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             email = User.objects.get(id=user_id).email
-#         except User.DoesNotExist:
-#             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
-#         # Subquery to check existence of docId in RecipientPositionData
-#         recipient_position_data_exists = RecipientPositionData.objects.filter(docId=OuterRef('pk')).values('id')
-
-#         if created_by_you and created_by_others:
-#             documents = DocumentTable.objects.filter(
-#                 (Q(creator_id=user_id) |
-#                  Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True))) &
-#                 Exists(recipient_position_data_exists)
-#             ).select_related('creator_id', 'last_modified_by')
-#         elif created_by_you:
-#             documents = DocumentTable.objects.filter(
-#                 Q(creator_id=user_id) &
-#                 Exists(recipient_position_data_exists)
-#             ).select_related('creator_id', 'last_modified_by')
-#         elif created_by_others:
-#             documents = DocumentTable.objects.filter(
-#                 Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True)) &
-#                 ~Q(creator_id=user_id) &
-#                 Exists(recipient_position_data_exists)
-#             ).select_related('creator_id', 'last_modified_by')
-#         else:
-#             return Response({"error": "Invalid request parameters"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Deleting documents whose docId does not exist in RecipientPositionData
-#         documents_to_delete = DocumentTable.objects.filter(
-#             ~Exists(recipient_position_data_exists)
-#         )
-#         documents_to_delete.delete()
-
-#         serializer = DocumentSerializer(documents, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 class DocumentView2(APIView):
-    # @method_decorator(log_api_request)
-    # def dispatch(self, request, *args, **kwargs):
-    #     return super().dispatch(request, *args, **kwargs)
-
     def post(self, request, format=None):
         print("dashboard_views DocumentView2")
         created_by_you = request.data.get('createdByYou')
