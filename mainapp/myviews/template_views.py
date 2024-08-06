@@ -142,7 +142,6 @@ class TemplateDraggedDataViewset(viewsets.ModelViewSet):
         self.perform_destroy(instance)
         return Response(status=status.HTTP_200_OK)
     def perform_destroy(self, instance):
-        # Custom delete logic if needed
         instance.delete()
     @method_decorator(log_api_request)
     def dispatch(self, *args, **kwargs):
