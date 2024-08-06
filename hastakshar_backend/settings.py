@@ -1,4 +1,5 @@
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -101,15 +102,17 @@ DATABASES = {
 #     }
 # }
 
-# ///// aws
-# AWS_ACCESS_KEY_ID = 'AKIA2P56CA5N2YZNAK26'
-# AWS_SECRET_ACCESS_KEY = '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'
-# AWS_REGION = 'ap-south-1'
-
 # //new AWS
-AWS_ACCESS_KEY_ID = 'AKIA2P56CA5N7CTQJOPQ'
-AWS_SECRET_ACCESS_KEY = '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'
-AWS_REGION = 'ap-south-1'
+# AWS_ACCESS_KEY_ID = 'AKIA2P56CA5N7CTQJOPQ'
+# AWS_SECRET_ACCESS_KEY = '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'
+# AWS_REGION = 'ap-south-1'
+# AWS Credentials
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+AWS_REGION = config('AWS_REGION')
+
+# Other settings...
+
 
 
 # Password validation

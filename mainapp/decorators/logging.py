@@ -81,11 +81,9 @@
 # def log_api_request(view_func):
 #     @wraps(view_func)
 #     def _wrapped_view(request, *args, **kwargs):
-#         # Skip logging for GET requests
 #         if request.method == 'GET':
 #             return view_func(request, *args, **kwargs)
 
-#         # Start timing
 #         start_time = time.time()
 #         user_id = None
 #         log_entry = NewAPILog(
@@ -99,17 +97,17 @@
 #             user_agent=request.META.get('HTTP_USER_AGENT', None),
 #         )
 
-#         print("reeeee:",request.body)
+#         # print("reeeee:",request.body)
+#         print("request.POST:",request.POST.get('user_id'))
 #         if request.body:
 #             try:
 #                 data = json.loads(request.body.decode('utf-8', errors='replace') if request.body else '{}')
 #                 user_id = data.get('user_id')
-#                 log_entry.user_id = user_id
+#                 log_entry.user_id = user_id if user_id is not None else request.POST.get('user_id')
 #                 log_entry.request_body = json.dumps(data)
 #             except (json.JSONDecodeError, KeyError):
 #                 pass
 
-#         print("user_id from request body:", user_id)
 
 #         try:
 #             # Call the actual view function
@@ -150,21 +148,17 @@
 #--------
 import time
 import json
-import urllib.parse
 from functools import wraps
 from django.utils.timezone import now
 from django.http import JsonResponse
-from rest_framework.response import Response
 from ..models import NewAPILog
 
 def log_api_request(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
-        # Skip logging for GET requests
         if request.method == 'GET':
             return view_func(request, *args, **kwargs)
 
-        # Start timing
         start_time = time.time()
         user_id = None
         log_entry = NewAPILog(
@@ -178,28 +172,23 @@ def log_api_request(view_func):
             user_agent=request.META.get('HTTP_USER_AGENT', None),
         )
 
-        # Log request body if present
-        if request.body:
-            try:
-                content_type = request.content_type
-                print("content-type:",content_type)
+        content_type = request.content_type
+        if content_type == 'application/json':
+            if request.body:
+                try:
+                    data = json.loads(request.body.decode('utf-8', errors='replace') if request.body else '{}')
+                    user_id = data.get('user_id')
+                    log_entry.user_id = user_id
+                    log_entry.request_body = json.dumps(data)
+                except (json.JSONDecodeError, KeyError):
+                    pass
+        elif content_type.startswith('multipart/form-data'):
+            user_id = request.POST.get('user_id')
+            log_entry.user_id = user_id
 
-                if 'application/json' in content_type:
-                    data = json.loads(request.body.decode('utf-8', errors='replace'))
-                    print("1111111dataForm:",data)
-                elif 'application/x-www-form-urlencoded' in content_type:
-                    data = urllib.parse.parse_qs(request.body.decode('utf-8', errors='replace'))
-                    print("dataForm:",data)
-                else:
-                    data = request.body.decode('utf-8', errors='replace') 
-                    print("dataFormelseee:",data)
-
-                user_id = data.get('user_id') if isinstance(data, dict) else None
-                log_entry.user_id = user_id
-                log_entry.request_body = json.dumps(data) if isinstance(data, (dict, list)) else data
-
-            except (json.JSONDecodeError, KeyError):
-                pass
+            request_body_data = request.POST.dict()
+            request_body_data.pop('file', None)  # Exclude file data from request body log
+            log_entry.request_body = json.dumps(request_body_data)
 
         try:
             # Call the actual view function
