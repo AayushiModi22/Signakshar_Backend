@@ -860,7 +860,6 @@ def sequence_email_approval(request):
         print("Exception occurred:", str(e))
         return JsonResponse({"error": str(e)}, status=400)
 
-
 def schedule_sequence_email(data):
     try:
         print("doc_views schedule_sequence_email")
@@ -895,6 +894,7 @@ def schedule_sequence_email(data):
         # Calculate the reminder date for 4:00:00 PM
         reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
         reminder_datetime_pm = reminder_datetime_pm.replace(hour=15, minute=39, second=0)
+
         print("===================4==========================")
         # Calculate the reminder date for 10:00:00 AM based on selected days--------change hereeeeeeeeeeeeeee
         reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
@@ -915,8 +915,10 @@ def schedule_sequence_email(data):
         print("==================***********************************************==")
         # Create CrontabSchedules for both reminder times
         crontab_schedule_pm, created_pm = CrontabSchedule.objects.get_or_create(
+
             minute=39,
             hour=15,
+
             day_of_month=reminder_datetime_pm.day,
             month_of_year=reminder_datetime_pm.month,
             defaults={'timezone': 'Asia/Kolkata'}
