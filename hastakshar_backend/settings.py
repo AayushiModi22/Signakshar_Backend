@@ -1,6 +1,6 @@
 from pathlib import Path
 from decouple import config
-
+import pymysql
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / 'mainapp' / 'email-format' / 'otp-template'
@@ -90,7 +90,7 @@ WSGI_APPLICATION = 'hastakshar_backend.wsgi.application'
 #         'PORT': '3306',       # Change this to your MySQL server's port
 #     }
 # }
-
+pymysql.install_as_MySQLdb()
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
