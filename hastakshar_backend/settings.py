@@ -1,6 +1,6 @@
 from pathlib import Path
 from decouple import config
-
+import pymysql
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / 'mainapp' / 'email-format' / 'otp-template'
@@ -80,27 +80,28 @@ WSGI_APPLICATION = 'hastakshar_backend.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hastakshar',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': 'localhost',  # Change this to your MySQL server's hostname or IP address
-        'PORT': '3306',       # Change this to your MySQL server's port
-    }
-}
-
+pymysql.install_as_MySQLdb()
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'signakshar',
-#         'USER': 'avnadmin',
-#         'PASSWORD': 'AVNS_EUHuRflCHDzhA37zq_5',
-#         'HOST': 'mysql-31695c3c-signakshar-qit.j.aivencloud.com', 
-#         'PORT': '25587',      
+#         'NAME': 'hastakshar',
+#         'USER': 'root',
+#         'PASSWORD': '',
+#         'HOST': 'localhost',  # Change this to your MySQL server's hostname or IP address
+#         'PORT': '3306',       # Change this to your MySQL server's port
 #     }
 # }
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'signakshar',
+        'USER': 'avnadmin',
+        'PASSWORD': 'AVNS_EUHuRflCHDzhA37zq_5',
+        'HOST': 'mysql-31695c3c-signakshar-qit.j.aivencloud.com', 
+        'PORT': '25587',      
+    }
+}
 
 # //new AWS
 
