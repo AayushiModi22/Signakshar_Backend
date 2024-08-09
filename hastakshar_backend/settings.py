@@ -81,16 +81,6 @@ WSGI_APPLICATION = 'hastakshar_backend.wsgi.application'
 # }
 
 pymysql.install_as_MySQLdb()
-DATABASES = {
-     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'QIT_VMS',
-        'USER': 'avnadmin',
-        'PASSWORD': 'AVNS_K7ugaJRQZR9S9YdFL6H',
-        'HOST': 'mysql-33f5cf4a-lvihan24-558c.i.aivencloud.com',  # Change this to your MySQL server's hostname or IP address
-        'PORT': '16414',       # Change this to your MySQL server's port
-    }
- }
 
 # DATABASES = {
 #     'default': {
@@ -103,16 +93,16 @@ DATABASES = {
 #     }
 # }
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'signakshar',
-#         'USER': 'avnadmin',
-#         'PASSWORD': 'AVNS_EUHuRflCHDzhA37zq_5',
-#         'HOST': 'mysql-31695c3c-signakshar-qit.j.aivencloud.com', 
-#         'PORT': '25587',      
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'signakshar',
+        'USER': 'avnadmin',
+        'PASSWORD': 'AVNS_EUHuRflCHDzhA37zq_5',
+        'HOST': 'mysql-31695c3c-signakshar-qit.j.aivencloud.com', 
+        'PORT': '25587',      
+    }
+}
 
 # //new AWS
 
