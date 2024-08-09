@@ -111,7 +111,7 @@ AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
 AWS_REGION = config('AWS_REGION')
 
 # Other settings...
-
+RECIEVER_PANEL_ENDPOINT = config('RECIEVER_PANEL_ENDPOINT', default='http://localhost:8000/')
 
 
 # Password validation
