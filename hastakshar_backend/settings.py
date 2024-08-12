@@ -1,5 +1,6 @@
 from pathlib import Path
 from decouple import config
+
 import pymysql
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -111,6 +112,8 @@ AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
 AWS_REGION = config('AWS_REGION')
 
 # Other settings...
+RECIEVER_PANEL_ENDPOINT = config('RECIEVER_PANEL_ENDPOINT', default='http://localhost:3000/')
+
 
 
 
