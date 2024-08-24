@@ -105,263 +105,75 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import JSONParser
 
-# class EmailListAPIView(APIView):
-#     def get(self, request, docId, recEmail):
-#         email_list = EmailList.objects.filter(docId=docId, emails=recEmail)
-#         serializer = EmailListSerializer(email_list, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-#     def put(self, request, docId, recEmail):
-#         try:
-#             data = JSONParser().parse(request)
-
-#             if 'doc_id' not in data:
-#                 return JsonResponse({"error": "doc_id is required"}, status=400)
-
-#             doc_id = data["doc_id"]
-#             email_id = recEmail
-#             status_update = data.get("status")
-
-#             doc = DocumentTable.objects.get(pk=doc_id)
-#             recipient_detail = DocumentRecipientDetail.objects.filter(email=email_id, docId=doc_id).first()
-
-#             if not recipient_detail:
-#                 return JsonResponse({"error": "Recipient data not found..!!"}, status=404)
-
-#             text_content = ""
-#             html_content = ""
-
-#             # Sequential signing
-#             if doc.req_type == "S":
-#                 email_obj = EmailList.objects.filter(docId=doc_id, emails=email_id).first()
-#                 if email_obj and email_obj.status == 'sent':
-#                     email_obj.status = status_update if status_update else 'approved'
-#                     email_obj.save()
-
-#                     next_pending_email = EmailList.objects.filter(status='pending', docId=doc_id).first()
-#                     if next_pending_email:
-#                         recipients = DocumentRecipientDetail.objects.filter(docId=doc_id, email=next_pending_email.emails).first()
-#                         if recipients:
-#                             if recipients.roleId.role_id == 1:  # Signer
-#                                 url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=signer&did={doc_id}&rid={recipients.id}"
-#                                 message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link to sign the document: {url} \nIgnore this reminder if you have already signed the document."
-#                             elif recipients.roleId.role_id == 2:  # Viewer
-#                                 url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={doc_id}&rid={recipients.id}"
-#                                 message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link to view the document: {url} \nIgnore this reminder if you have already viewed the document."
-
-#                             html_content = render_to_string('otp-template/document-signing.html', {
-#                                 'reciever_link': url,
-#                                 'username': next_pending_email.emails.split('@')[0],
-#                                 'message': doc.email_msg,
-#                                 'recRole': recipients.roleId.role_id
-#                             })
-#                             text_content = strip_tags(html_content)
-
-#                             schedule_sequence_email({
-#                                 "email": next_pending_email.emails,
-#                                 "reminderDays": doc.reminderDays,
-#                                 "scheduledDate": doc.expirationDateTime,
-#                                 "doc_id": doc_id,
-#                                 "title": doc.email_title,
-#                                 "message": message,
-#                                 "text_content": text_content,
-#                                 "html_content": html_content
-#                             })
-#                             send_mail_to_sequence_recipient(next_pending_email.emails, doc.email_title, text_content, html_content, doc_id)
-
-#                             return JsonResponse({"success": "Email sent to next recipient"}, safe=False, status=200)
-#                     else:
-#                         doc.status = "Completed"
-#                         doc.save()
-#                         return JsonResponse({"success": "Document completed successfully"}, status=200)
-#                 else:
-#                     return JsonResponse({"error": "Email has already been sent or not found..!!"}, status=400)
-
-#             # Notify all recipients simultaneously
-#             elif doc.req_type == "N":
-#                 email_obj = EmailList.objects.filter(docId=doc_id, emails=email_id).first()
-#                 if email_obj and email_obj.status == 'sent':
-#                     email_obj.status = status_update if status_update else 'approved'
-#                     email_obj.save()
-
-#                 email_obj_list = EmailList.objects.filter(docId=doc_id)
-#                 all_approved = all(email.status == 'approved' for email in email_obj_list)
-
-#                 if all_approved:
-#                     doc.status = "Completed"
-#                     doc.save()
-#                     return JsonResponse({"success": "Document completed successfully"}, status=200)
-#                 else:
-#                     return JsonResponse({"success": "Recipient approved but awaiting others"}, status=200)
-
-#             # Handle concurrent recipients
-#             elif doc.req_type == "C":
-#                 email_obj = EmailList.objects.filter(docId=doc_id, emails=email_id).first()
-#                 if email_obj and email_obj.status == 'sent':
-#                     email_obj.status = status_update if status_update else 'approved'
-#                     email_obj.save()
-#                     next_pending_emails = EmailList.objects.filter(status='pending', docId=doc_id)
-
-#                     if next_pending_emails.exists():
-#                         for pending_email in next_pending_emails:
-#                             recipients = DocumentRecipientDetail.objects.filter(docId=doc_id, email=pending_email.emails).first()
-#                             if recipients:
-#                                 if recipients.roleId.role_id == 1:
-#                                     url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=signer&did={doc_id}&rid={recipients.id}"
-#                                     message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link to sign the document: {url} \nIgnore this reminder if you have already signed the document."
-#                                 elif recipients.roleId.role_id == 2:
-#                                     url = f"http://localhost:3000/#/recieverPanel?docType=doc&type=viewer&did={doc_id}&rid={recipients.id}"
-#                                     message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link to view the document: {url} \nIgnore this reminder if you have already viewed the document."
-
-#                                 html_content = render_to_string('otp-template/document-signing.html', {
-#                                     'reciever_link': url,
-#                                     'username': pending_email.emails.split('@')[0],
-#                                     'message': doc.email_msg,
-#                                     'recRole': recipients.roleId.role_id
-#                                 })
-#                                 text_content = strip_tags(html_content)
-
-#                                 schedule_sequence_email({
-#                                     "email": pending_email.emails,
-#                                     "reminderDays": doc.reminderDays,
-#                                     "scheduledDate": doc.expirationDateTime,
-#                                     "doc_id": doc_id,
-#                                     "title": doc.email_title,
-#                                     "message": message,
-#                                     "text_content": text_content,
-#                                     "html_content": html_content
-#                                 })
-#                                 send_mail_to_sequence_recipient(pending_email.emails, doc.email_title, text_content, html_content, doc_id)
-
-
-#                     email_obj_list = EmailList.objects.filter(docId=doc_id)
-#                     all_approved = all(email.status == 'approved' for email in email_obj_list)
-
-#                     if all_approved:
-#                         doc.status = "Completed"
-#                         doc.save()
-#                         return JsonResponse({"success": "Document completed successfully"}, status=200)
-#                     else:
-#                         return JsonResponse({"success": "Emails sent to next recipients."}, status=200)
-#                 else:
-#                     return JsonResponse({"error": "Email has already been sent or not found..!!"}, status=400)
-
-#         except DocumentTable.DoesNotExist:
-#             return JsonResponse({"error": "Document not found"}, status=404)
-#         except EmailList.DoesNotExist:
-#             return JsonResponse({"error": "Email not found"}, status=404)
-#         except Exception as e:
-#             print("Exception occurred:", str(e))
-#             return JsonResponse({"error": str(e)}, status=400)
-
-
+# #original
 class EmailListAPIView(APIView):
     def get(self, request, docId, recEmail):
         email_list = EmailList.objects.filter(docId=docId, emails=recEmail)
         serializer = EmailListSerializer(email_list, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
- 
+
     def put(self, request, docId, recEmail):
         try:
             data = JSONParser().parse(request)
+
             if 'doc_id' not in data:
                 return JsonResponse({"error": "doc_id is required"}, status=400)
 
             doc_id = data["doc_id"]
-
             email_id = recEmail
             status_update = data.get("status")
 
             reciever_panel_endpoint = config('RECIEVER_PANEL_ENDPOINT')
 
-            doc = DocumentTable.objects.get(pk=doc_id)
-            recipient_detail = DocumentRecipientDetail.objects.filter(email=email_id, docId=doc_id).first()
 
+            doc = DocumentTable.objects.get(pk=doc_id)
+            print("doc datetime : ",doc.expirationDateTime," doc.reminderDays : ",doc.reminderDays)
+            recipient_detail = DocumentRecipientDetail.objects.filter(email=email_id, docId=doc_id).first()
+            print("recipient_detail : ",recipient_detail)
             if not recipient_detail:
                 return JsonResponse({"error": "Recipient data not found..!!"}, status=404)
 
-            email_obj = EmailList.objects.filter(docId=doc_id, emails=email_id).first()
+            text_content = ""
+            html_content = ""
 
-            if email_obj is None:
-                return JsonResponse({"error": "Email object not found..!!"}, status=404)
+            # Sequential signing
+            if doc.req_type == "S":
+                email_obj = EmailList.objects.filter(docId=doc_id, emails=email_id).first()
+                print("email_obj 1 : ",email_obj)
+                print("email_obj 2 : ",email_obj.status)
+                if email_obj and email_obj.status == 'sent':
+                    email_obj.status = status_update if status_update else 'approved'
+                    email_obj.save()
 
-            if email_obj.status == 'sent':
-                email_obj.status = status_update if status_update else 'approved'
-                email_obj.save()
-
-                if doc.req_type == "S":
                     next_pending_email = EmailList.objects.filter(status='pending', docId=doc_id).first()
+                    print("email_obj 5 : ",next_pending_email)
+                    print("email_obj 6 : ",next_pending_email.emails)
+
                     if next_pending_email:
+                        print("email_obj 7 : ",next_pending_email)
+                        print("email_obj 8 : ",next_pending_email.emails)
                         recipients = DocumentRecipientDetail.objects.filter(docId=doc_id, email=next_pending_email.emails).first()
-                        if not recipients:
-                            return JsonResponse({"error": "Recipient data not found for next pending email..!!"}, status=404)
-
-                        if recipients.roleId.role_id == 1:
-                            url = f"{reciever_panel_endpoint}#/recieverPanel?docType=doc&type=signer&did={doc_id}&rid={recipients.id}"
-                            message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link for signing the document: {url} \nIgnore this reminder if you have already signed the document."
-                        elif recipients.roleId.role_id == 2:
-                            url = f"{reciever_panel_endpoint}#/recieverPanel?docType=doc&type=viewer&did={doc_id}&rid={recipients.id}"
-                            message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link for viewing the pdf: {url} \nIgnore this reminder if you have already viewed the document."
-
-                        html_content = render_to_string('otp-template/document-signing.html', {'reciever_link': url, 'username': next_pending_email.emails.split('@')[0], 'message': doc.email_msg, 'recRole': recipients.roleId.role_id})
-                        text_content = strip_tags(html_content)
-
-                        schedule_sequence_email({
-                            "email": next_pending_email.emails,
-                            "reminderDays": doc.reminderDays,
-                            "scheduledDate": doc.expirationDateTime,
-                            "doc_id": doc_id,
-                            "title": doc.email_title,
-                            "message": message,
-                            "text_content": text_content,
-                            "html_content": html_content
-                        })
-                        send_mail_to_sequence_recipient(next_pending_email.emails, doc.email_title, text_content, html_content, doc_id)
-                        return JsonResponse({"success": "Email sent to next recipient"}, safe=False, status=200)
-                    else:
-                        doc.status = "Completed"
-                        doc.save()
-                        return JsonResponse({"success": "Document completed successfully"}, status=200)
-                elif doc.req_type == "N":
-                    email_objs = EmailList.objects.filter(docId=doc_id)
-                    for data in email_objs:
-                        if data.emails == email_id:
-                            if data.status == 'sent':
-                                data.status = status_update if status_update else 'approved'
-                                data.save()
-
-                    email_objs = EmailList.objects.filter(docId=doc_id)
-                    all_approved = all(data.status == 'approved' for data in email_objs)
-
-                    if all_approved:
-                        doc.status = "Completed"
-                        doc.save()
-                        return JsonResponse({"success": "Document completed successfully"}, status=200)
-                    return JsonResponse({"success": True}, safe=False, status=200)
-                elif doc.req_type == "C":
-                    email_objs = EmailList.objects.filter(docId=doc_id, emails=email_id).first()
-                    if email_objs and email_objs.status == 'sent':
-                        email_objs.status = status_update if status_update else 'approved'
-                        email_objs.save()
-
-                        next_pending_emails = EmailList.objects.filter(status='pending', docId=doc_id)
-                        for data in next_pending_emails:
-                            recipients = DocumentRecipientDetail.objects.filter(docId=doc_id, email=data.emails).first()
-                            if not recipients:
-                                continue
-
-                            if recipients.roleId.role_id == 1:
+                        print("email_obj 9 : ",recipients)
+                        print("email_obj 10 : ",recipients.email)
+                        if recipients:
+                            if recipients.roleId.role_id == 1:  # Signer
                                 url = f"{reciever_panel_endpoint}#/recieverPanel?docType=doc&type=signer&did={doc_id}&rid={recipients.id}"
-                                message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link for signing the document: {url} \nIgnore this reminder if you have already signed the document."
-                            elif recipients.roleId.role_id == 2:
+                                message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link to sign the document: {url} \nIgnore this reminder if you have already signed the document."
+                            elif recipients.roleId.role_id == 2:  # Viewer
                                 url = f"{reciever_panel_endpoint}#/recieverPanel?docType=doc&type=viewer&did={doc_id}&rid={recipients.id}"
-                                message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link for viewing the pdf: {url} \nIgnore this reminder if you have already viewed the document."
+                                message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link to view the document: {url} \nIgnore this reminder if you have already viewed the document."
 
-                            html_content = render_to_string('otp-template/document-signing.html', {'reciever_link': url, 'username': data.emails.split('@')[0], 'message': doc.email_msg, 'recRole': recipients.roleId.role_id})
+                        
+                            html_content = render_to_string('otp-template/document-signing.html', {
+                                'reciever_link': url,
+                                'username': next_pending_email.emails.split('@')[0],
+                                'message': doc.email_msg,
+                                'recRole': recipients.roleId.role_id
+                            })
                             text_content = strip_tags(html_content)
 
                             schedule_sequence_email({
-                                "email": data.emails,
+                                "email": next_pending_email.emails,
                                 "reminderDays": doc.reminderDays,
                                 "scheduledDate": doc.expirationDateTime,
                                 "doc_id": doc_id,
@@ -370,28 +182,94 @@ class EmailListAPIView(APIView):
                                 "text_content": text_content,
                                 "html_content": html_content
                             })
-                            send_mail_to_sequence_recipient(data.emails, doc.email_title, text_content, html_content, doc_id)
+                            send_mail_to_sequence_recipient(next_pending_email.emails, doc.email_title, text_content, html_content, doc_id)
 
-                        email_objs = EmailList.objects.filter(docId=doc_id)
-                        all_approved = all(data.status == 'approved' for data in email_objs)
-
-                        if all_approved:
-                            doc.status = "Completed"
-                            doc.save()
-                            return JsonResponse({"success": "Document completed successfully"}, status=200)
-                        return JsonResponse({"success": "Emails sent successfully."}, status=200)
+                            return JsonResponse({"success": "Email sent to next recipient"}, safe=False, status=200)
                     else:
-                        return JsonResponse({"error": "Email has already been sent or not found..!!"}, status=400)
+                        doc.status = "Completed"
+                        doc.save()
+                        return JsonResponse({"success": "Document completed successfully"}, status=200)
                 else:
-                    return JsonResponse({"error": "No method of req_type found ..!!"}, status=404)
+                    return JsonResponse({"error": "Email has already been sent or not found..!!"}, status=400)
+
+            # Notify all recipients simultaneously
+            elif doc.req_type == "N":
+                email_obj = EmailList.objects.filter(docId=doc_id, emails=email_id).first()
+                print("email_obj 3 : ",email_obj)
+                print("email_obj 4 : ",email_obj.status)
+                if email_obj and email_obj.status == 'sent':
+                    email_obj.status = status_update if status_update else 'approved'
+                    email_obj.save()
+
+                email_obj_list = EmailList.objects.filter(docId=doc_id)
+                all_approved = all(email.status == 'approved' for email in email_obj_list)
+
+                if all_approved:
+                    doc.status = "Completed"
+                    doc.save()
+                    return JsonResponse({"success": "Document completed successfully"}, status=200)
+                else:
+                    return JsonResponse({"success": "Recipient approved but awaiting others"}, status=200)
+
+            # Handle concurrent recipients
+            elif doc.req_type == "C":
+                email_obj = EmailList.objects.filter(docId=doc_id, emails=email_id).first()
+                if email_obj and email_obj.status == 'sent':
+                    email_obj.status = status_update if status_update else 'approved'
+                    email_obj.save()
+                    next_pending_emails = EmailList.objects.filter(status='pending', docId=doc_id)
+
+                    if next_pending_emails.exists():
+                        for pending_email in next_pending_emails:
+                            recipients = DocumentRecipientDetail.objects.filter(docId=doc_id, email=pending_email.emails).first()
+                            if recipients:
+                                if recipients.roleId.role_id == 1:
+                                    url = f"{reciever_panel_endpoint}#/recieverPanel?docType=doc&type=signer&did={doc_id}&rid={recipients.id}"
+                                    message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link to sign the document: {url} \nIgnore this reminder if you have already signed the document."
+                                elif recipients.roleId.role_id == 2:
+                                    url = f"{reciever_panel_endpoint}#/recieverPanel?docType=doc&type=viewer&did={doc_id}&rid={recipients.id}"
+                                    message = doc.email_msg + f"\n\nThank you for choosing Signakshar. Click on the following link to view the document: {url} \nIgnore this reminder if you have already viewed the document."
+
+                                html_content = render_to_string('otp-template/document-signing.html', {
+                                    'reciever_link': url,
+                                    'username': pending_email.emails.split('@')[0],
+                                    'message': doc.email_msg,
+                                    'recRole': recipients.roleId.role_id
+                                })
+                                text_content = strip_tags(html_content)
+
+                                schedule_sequence_email({
+                                    "email": pending_email.emails,
+                                    "reminderDays": doc.reminderDays,
+                                    "scheduledDate": doc.expirationDateTime,
+                                    "doc_id": doc_id,
+                                    "title": doc.email_title,
+                                    "message": message,
+                                    "text_content": text_content,
+                                    "html_content": html_content
+                                })
+                                send_mail_to_sequence_recipient(pending_email.emails, doc.email_title, text_content, html_content, doc_id)
+
+
+                    email_obj_list = EmailList.objects.filter(docId=doc_id)
+                    all_approved = all(email.status == 'approved' for email in email_obj_list)
+
+                    if all_approved:
+                        doc.status = "Completed"
+                        doc.save()
+                        return JsonResponse({"success": "Document completed successfully"}, status=200)
+                    else:
+                        return JsonResponse({"success": "Emails sent to next recipients."}, status=200)
+                else:
+                    return JsonResponse({"error": "Email has already been sent or not found..!!"}, status=400)
 
         except DocumentTable.DoesNotExist:
             return JsonResponse({"error": "Document not found"}, status=404)
         except EmailList.DoesNotExist:
             return JsonResponse({"error": "Email not found"}, status=404)
         except Exception as e:
-            print("Exception occurred:", str(e))  # Log any other exception
-            return JsonResponse({"error": str(e)}, status=500)
+            print("Exception occurred:", str(e))
+            return JsonResponse({"error": str(e)}, status=400)
 
        
 class DocumentRecipientDetailAPIView(APIView):
@@ -526,6 +404,7 @@ def save_recipient_position_data(request):
             Expiration = data["Expiration"]
             docId = data["docId"]
             s_send = data["s_send"]
+            isSigned = data["isSigned"]
             last_modified_by_id=data["last_modified_by_id"]
             doc = DocumentTable.objects.get(pk=docId)
             doc.last_modified_by_id = last_modified_by_id
@@ -563,6 +442,7 @@ def save_recipient_position_data(request):
 
             email_list = list(email_list)
             recipients = DocumentRecipientDetail.objects.filter(docId=docId)
+            print("recipients ====> ",recipients)
             email_messages = []
             for rec in recipients:
                 if rec.roleId_id == 1:
@@ -598,9 +478,10 @@ def save_recipient_position_data(request):
             }
 
             if doc.req_type == "S":
-                sequence_emails(payload)
+                print("=======================> inside save recipient")
+                sequence_emails(payload,isSigned)
             elif doc.req_type == "C":
-                sequence_emails(payload)
+                sequence_emails(payload,isSigned)
             elif doc.req_type == "N":
                 if data["Schedule"]:
                     none_send_email_schedule(email_messages,doc,data["scheduleDateAndTime"])
@@ -788,7 +669,7 @@ def none_send_email_schedule(email_messages, doc, datetime):
 #     email.send()
 
 def send_mail_to_sequence_recipient(email_obj, subject, text_content="", html_content="", doc_id=None):
-    print("doc_views send_mail_to_sequence_recipient")
+    print("doc_views send_mail_to_sequence_recipient",email_obj," ",subject)
     
     # Update the status of the current email to 'sent'
     email_data = EmailList.objects.filter(docId=doc_id, emails=email_obj).first()
@@ -856,14 +737,16 @@ def send_mail_to_sequence_recipient_schedule(recipient_email, subject, text_cont
         print("Error:", e)
 
 
-def sequence_emails(data):
+def sequence_emails(data,isSigned):
     try:
         recipient_list = data["recipient_list"]
         if not recipient_list:
             return JsonResponse({"success": False, "message": "Recipient list is empty"}, status=400)
-
+        print("Save Reciepent list : ",recipient_list)
         first_recipient_sent = False
         for recipient_email in recipient_list:
+            print("recipient_email ==>: ",recipient_email['email'])
+            # somethinf wrong it passes not email
             doc_Id1 = DocumentTable.objects.filter(id=data["docID"]).first()
             email_obj = EmailList.objects.create(emails=recipient_email['email'], docId=doc_Id1)
            
@@ -876,8 +759,7 @@ def sequence_emails(data):
                 'recRole': recipient_email.get('recRole')
             })
             text_content = strip_tags(html_content)
-            print("sequence email textcontent=========",text_content)
-
+            print("==========================>")
             if not first_recipient_sent:
                 schedule_sequence_email({
                     "email": recipient_email["email"],
@@ -906,7 +788,16 @@ def sequence_emails(data):
                         html_content,
                         data["docID"]
                     )
-                first_recipient_sent = True
+                
+                # add condition for sending schedule email 
+                if isSigned["isSignedStatus"]:
+                    first_recipient_sent = False
+                    email_obj = EmailList.objects.filter(docId=data["docID"], emails=isSigned["email"]).first()
+                    if email_obj:
+                        email_obj.status = 'approved'
+                        email_obj.save()
+                else:
+                    first_recipient_sent = True
             else:
                 email_obj.save()
 
@@ -959,7 +850,7 @@ def sequence_email_approval(request):
                             'recRole': role_action
                         })
                         text_content = strip_tags(html_content)
-                        print("seuqnce_email_Approval_textcontent_S",text_content)
+                        # print("seuqnce_email_Approval_textcontent_S",text_content)
 
                         schedule_sequence_email({
                             "email": next_pending_email.emails,
@@ -1039,7 +930,7 @@ def sequence_email_approval(request):
                             'recRole': role_action
                         })
                         text_content = strip_tags(html_content)
-                        print("seuqnce_email_Approval_textcontent_C",text_content)
+                        # print("seuqnce_email_Approval_textcontent_C",text_content)
 
                         schedule_sequence_email({
                             "email": data.emails,
@@ -1184,7 +1075,7 @@ def sequence_email_approval(request):
 
 def schedule_sequence_email(data):
     try:
-        print("doc_views schedule_sequence_email")
+        print("doc_views schedule_sequence_email",data['email'])
         recipient_email = data['email']
         scheduled_date = data['scheduledDate']
         reminder_days = data['reminderDays']
@@ -1211,11 +1102,11 @@ def schedule_sequence_email(data):
 
         # Calculate the reminder date for 4:00:00 PM
         reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
-        reminder_datetime_pm = reminder_datetime_pm.replace(hour=15, minute=43, second=0)
+        reminder_datetime_pm = reminder_datetime_pm.replace(hour=15, minute=57, second=0)
 
         # Calculate the reminder date for 10:00:00 AM based on selected days
         reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-        reminder_datetime_am = reminder_datetime_am.replace(hour=13, minute=54, second=0)
+        reminder_datetime_am = reminder_datetime_am.replace(hour=16, minute=22, second=0)
 
         expiration_days = (scheduled_datetime - timezone.now()).days
         doc = DocumentTable.objects.get(pk=doc_id)
@@ -1231,7 +1122,7 @@ def schedule_sequence_email(data):
 
         # Create CrontabSchedules for both reminder times
         crontab_schedule_pm, created_pm = CrontabSchedule.objects.get_or_create(
-            minute=43,
+            minute=57,
             hour=15,
             day_of_month=reminder_datetime_pm.day,
             month_of_year=reminder_datetime_pm.month,
@@ -1239,8 +1130,8 @@ def schedule_sequence_email(data):
         )
 
         crontab_schedule_am, created_am = CrontabSchedule.objects.get_or_create(
-            minute=54,
-            hour=13,
+            minute=22,
+            hour=16,
             day_of_month=reminder_datetime_am.day,
             month_of_year=reminder_datetime_am.month,
             defaults={'timezone': 'Asia/Kolkata'}

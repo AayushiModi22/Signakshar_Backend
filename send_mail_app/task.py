@@ -49,8 +49,6 @@ logger = logging.getLogger(__name__)
 @shared_task
 def send_mail_func(scheduled_email_id, scheduled_email_subject, text_content, html_content):
     # print("inside_send_mail_func")
-    print("=========text_content=======send_mail_app",text_content)
-    print("=========text_content=======send_mail_app",scheduled_email_id, scheduled_email_subject, text_content, html_content)
     try:
         scheduled_email = ScheduledEmail.objects.get(id=scheduled_email_id)
         recipient_email = scheduled_email.recipient_email

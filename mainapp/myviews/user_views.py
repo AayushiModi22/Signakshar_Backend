@@ -44,6 +44,49 @@ class JWTAuthentication(BaseAuthentication):
         return (user, token)
  
 class Registerview(APIView):
+    # @method_decorator(log_api_request)
+    # def dispatch(self, request, *args, **kwargs):
+    #     return super().dispatch(request, *args, **kwargs)
+
+    # def post(self, request):
+    #     print("user_views Registerview")
+    #     serializer = UserSerializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     new_user = serializer.save()
+    #     uid = new_user.id
+
+    #     try:
+    #         data = request.data
+    #         signature_data = {
+    #             # 'id': uid,
+    #             'draw_img_name': data.get('draw_img_name_signature'),
+    #             'draw_enc_key': data.get('draw_enc_key'),
+    #             'img_name': data.get('img_name_signature'),
+    #             'img_enc_key': data.get('img_enc_key'),
+    #             'user_id_id': new_user.id,
+    #             'sign_text_color' : data.get('sign_text_color'),
+    #             'sign_text_font' : data.get('sign_text_font'),
+    #             'sign_text_value' : data.get('sign_text_value'),
+    #             'sign_text': data.get('signature_text'),
+    #         }
+
+    #         initial_data = {
+    #             # 'id': new_user.id,
+    #             'draw_img_name': data.get('draw_img_name_initials'),
+    #             'draw_enc_key': data.get('draw_enc_key'),
+    #             'img_name': data.get('img_name_initials'),
+    #             'img_enc_key': data.get('img_enc_key'),
+    #             'user_id_id': new_user.id,
+    #             'initial_text_color' : data.get('initial_text_color'),
+    #             'initial_text_font' : data.get('initial_text_font'),
+    #             'initial_text_value' : data.get('initial_text_value'),
+    #             'initial_text': data.get('initial_text'),
+    #         }
+    #         signatureTableData = Signature.objects.create(**signature_data)
+    #         initialTableData = Initials.objects.create(**initial_data)
+    #     except KeyError as e:
+    #         return JsonResponse({'error': str(e)}, status=400)
+    #     return Response(serializer.data)
     @method_decorator(log_api_request)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
@@ -53,40 +96,23 @@ class Registerview(APIView):
         serializer = UserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_user = serializer.save()
-        uid = new_user.id
 
-        try:
-            data = request.data
-            signature_data = {
-                # 'id': uid,
-                'draw_img_name': data.get('draw_img_name_signature'),
-                'draw_enc_key': data.get('draw_enc_key'),
-                'img_name': data.get('img_name_signature'),
-                'img_enc_key': data.get('img_enc_key'),
-                'user_id_id': new_user.id,
-                'sign_text_color' : data.get('sign_text_color'),
-                'sign_text_font' : data.get('sign_text_font'),
-                'sign_text_value' : data.get('sign_text_value'),
-                'sign_text': data.get('signature_text'),
-            }
+        # Generate JWT token after successful registration
+        payload = {
+            'id': new_user.id,
+            'exp': datetime.utcnow() + timedelta(days=1),  # Token valid for 1 day
+            'iat': datetime.utcnow()
+        }
+        token = jwt.encode(payload, 'secret', algorithm='HS256')
 
-            initial_data = {
-                # 'id': new_user.id,
-                'draw_img_name': data.get('draw_img_name_initials'),
-                'draw_enc_key': data.get('draw_enc_key'),
-                'img_name': data.get('img_name_initials'),
-                'img_enc_key': data.get('img_enc_key'),
-                'user_id_id': new_user.id,
-                'initial_text_color' : data.get('initial_text_color'),
-                'initial_text_font' : data.get('initial_text_font'),
-                'initial_text_value' : data.get('initial_text_value'),
-                'initial_text': data.get('initial_text'),
-            }
-            signatureTableData = Signature.objects.create(**signature_data)
-            initialTableData = Initials.objects.create(**initial_data)
-        except KeyError as e:
-            return JsonResponse({'error': str(e)}, status=400)
-        return Response(serializer.data)
+        # Print the token to the console
+        print(f"JWT Token: {token}")
+
+        # Return the token along with the user data
+        return Response({
+            'user': serializer.data,
+            'jwt': token
+        })
 
 # @log_api_request
 class LoginView(APIView):
@@ -120,36 +146,6 @@ class LoginView(APIView):
         response.data = {'jwt': token}
         return response
 
-
-# class LoginView(APIView):
-#     @method_decorator(log_api_request)
-#     def dispatch(self, request, *args, **kwargs):
-#         return super().dispatch(request, *args, **kwargs)
-#     def post(self, request):
-#         email = request.data['email']
-#         password = request.data['password']
-    
-#         user = User.objects.filter(email=email).first()
-    
-#         if user is None:
-#             raise AuthenticationFailed('User not found!')
-#         if user.signIn_with_google == "Y":
-#             raise AuthenticationFailed('You have logged in with Google!')
-    
-#         if not user.check_password(password):
-#             raise AuthenticationFailed('Incorrect password!')
-       
-#         payload = {
-#             'id': user.id,
-#             'exp': datetime.utcnow() + timedelta(days=1),
-#             'iat': datetime.utcnow()
-#         }
-#         token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
-    
-#         response = Response()
-#         response.set_cookie(key='jwt', value=token, httponly=True)
-#         response.data = {'jwt': token}
-#         return response
 
 @csrf_exempt
 @require_POST
