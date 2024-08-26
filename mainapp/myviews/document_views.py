@@ -515,6 +515,20 @@ class GetDraggedDataByDocRec(APIView):
         serializer = DocumentPositionSerializer(recipient_positions, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+# /// rajvi api for deleting recipients by document id
+class DeleteRecipientByDocIdView(APIView):
+    def delete(self, request, doc_id):
+        try:
+            recipients = DocumentRecipientDetail.objects.filter(docId=doc_id)
+            if recipients.exists():
+                recipients.delete()
+                return JsonResponse({"message": "Recipients deleted successfully."}, status=200)
+            else:
+                return JsonResponse({"error": "No recipients found for the given document ID."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+
 # send email
 from django.conf import settings
 from django.core.mail import send_mail
@@ -554,6 +568,9 @@ def get_email_list(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
  
+
+
+
 # ===================================================================================
 # CELERY VIEW
 # ===================================================================================  
