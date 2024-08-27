@@ -290,6 +290,62 @@ class FetchRecipientFullDetails(APIView):
             return Response({"error": "Recipient not found"}, status=status.HTTP_404_NOT_FOUND)
  
 # Save the document record along with recipient detail
+# @csrf_exempt
+# @log_api_request
+# def save_doc(request):
+#     try:
+#         print("doc_views save_doc")
+#         if request.method == 'POST':
+#             data = JSONParser().parse(request)
+#             doc_name = data['name']
+#             userid = data['creator_id']
+#             print("data:",data)
+#             user = User.objects.get(pk=userid)
+
+#             existing_template = DocumentTable.objects.filter(
+#                 name=doc_name, creator_id=user
+#             ).exists()
+
+#             if existing_template:
+#                 return JsonResponse(
+#                     {"error": "Document with the same name already exists for this user."},
+#                     status=400
+#                 )
+
+#             # Create the document
+#             document = DocumentTable.objects.create(
+#                 name=data['name'],
+#                 pdfName=data['pdfName'],
+#                 size=data['size'],
+#                 s3Key=data['s3Key'],
+#                 status=data['status'],
+#                 email_title=data['email_title'],
+#                 email_msg=data['email_message'],
+#                 creator_id=user,
+#                 req_type=data['emailAction'],
+#                 expirationDateTime=data['scheduledDate'],
+#                 reminderDays=data['reminderDays'],
+#             )
+#             document_id = document.id
+#             recipients = [
+#                 DocumentRecipientDetail(
+#                     name=recipient_data['RecipientName'],
+#                     email=recipient_data['RecipientEmail'],
+#                     roleId=RecipientRole.objects.filter(
+#                         role_name = recipient_data["role"]
+#                     ).first(),
+#                     docId= document
+#                 )
+#                 for recipient_data in data['receipientData']
+#             ]
+#             DocumentRecipientDetail.objects.bulk_create(recipients)
+#             return JsonResponse({"doc_id":document.id,"message": "Document and recipients created successfully."})
+#         else:
+#             return JsonResponse({"error": "Invalid request method"}, status=405)
+#     except Exception as e:
+#         return JsonResponse({'error': str(e)}, status=400)
+
+# /// rajvi new api for deleting rec if docid exists and then further document entry gets inserted
 @csrf_exempt
 @log_api_request
 def save_doc(request):
@@ -299,51 +355,82 @@ def save_doc(request):
             data = JSONParser().parse(request)
             doc_name = data['name']
             userid = data['creator_id']
-
+            doc_id = data.get('doc_id')  # Fetch doc_id if it exists
             user = User.objects.get(pk=userid)
 
-            existing_template = DocumentTable.objects.filter(
-                name=doc_name, creator_id=user
-            ).exists()
+            # If doc_id exists, update the existing document
+            if doc_id:
+                try:
+                    document = DocumentTable.objects.get(pk=doc_id)
+                    
+                    # Delete existing recipients
+                    DocumentRecipientDetail.objects.filter(docId=document).delete()
 
-            if existing_template:
-                return JsonResponse(
-                    {"error": "Document with the same name already exists for this user."},
-                    status=400
+                    # Update the document fields
+                    document.name = doc_name
+                    document.pdfName = data['pdfName']
+                    document.size = data['size']
+                    document.s3Key = data['s3Key']
+                    document.status = data['status']
+                    document.email_title = data['email_title']
+                    document.email_msg = data['email_message']
+                    document.req_type = data['emailAction']
+                    document.expirationDateTime = data['scheduledDate']
+                    document.reminderDays = data['reminderDays']
+                    document.save()
+                except DocumentTable.DoesNotExist:
+                    return JsonResponse({"error": "Document not found."}, status=404)
+
+            else:
+                # If doc_id does not exist, check for existing template
+                existing_template = DocumentTable.objects.filter(
+                    name=doc_name, creator_id=user
+                ).exists()
+
+                if existing_template:
+                    return JsonResponse(
+                        {"error": "Document with the same name already exists for this user."},
+                        status=400
+                    )
+
+                # Create the document
+                document = DocumentTable.objects.create(
+                    name=data['name'],
+                    pdfName=data['pdfName'],
+                    size=data['size'],
+                    s3Key=data['s3Key'],
+                    status=data['status'],
+                    email_title=data['email_title'],
+                    email_msg=data['email_message'],
+                    creator_id=user,
+                    req_type=data['emailAction'],
+                    expirationDateTime=data['scheduledDate'],
+                    reminderDays=data['reminderDays'],
                 )
+                document_id = document.id
 
-            # Create the document
-            document = DocumentTable.objects.create(
-                name=data['name'],
-                pdfName=data['pdfName'],
-                size=data['size'],
-                s3Key=data['s3Key'],
-                status=data['status'],
-                email_title=data['email_title'],
-                email_msg=data['email_message'],
-                creator_id=user,
-                req_type=data['emailAction'],
-                expirationDateTime=data['scheduledDate'],
-                reminderDays=data['reminderDays'],
-            )
-            document_id = document.id
+            # Create new recipients
             recipients = [
                 DocumentRecipientDetail(
                     name=recipient_data['RecipientName'],
                     email=recipient_data['RecipientEmail'],
                     roleId=RecipientRole.objects.filter(
-                        role_name = recipient_data["role"]
+                        role_name=recipient_data["role"]
                     ).first(),
-                    docId= document
+                    docId=document
                 )
                 for recipient_data in data['receipientData']
             ]
             DocumentRecipientDetail.objects.bulk_create(recipients)
-            return JsonResponse({"doc_id":document.id,"message": "Document and recipients created successfully."})
+
+            return JsonResponse({"doc_id": document.id, "message": "Document and recipients saved successfully."})
         else:
             return JsonResponse({"error": "Invalid request method"}, status=405)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+
 
 @csrf_exempt
 def get_doc(request):
@@ -518,17 +605,17 @@ class GetDraggedDataByDocRec(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # /// rajvi api for deleting recipients by document id
-class DeleteRecipientByDocIdView(APIView):
-    def delete(self, request, doc_id):
-        try:
-            recipients = DocumentRecipientDetail.objects.filter(docId=doc_id)
-            if recipients.exists():
-                recipients.delete()
-                return JsonResponse({"message": "Recipients deleted successfully."}, status=200)
-            else:
-                return JsonResponse({"error": "No recipients found for the given document ID."}, status=404)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+# class DeleteRecipientByDocIdView(APIView):
+#     def delete(self, request, doc_id):
+#         try:
+#             recipients = DocumentRecipientDetail.objects.filter(docId=doc_id)
+#             if recipients.exists():
+#                 recipients.delete()
+#                 return JsonResponse({"message": "Recipients deleted successfully."}, status=200)
+#             else:
+#                 return JsonResponse({"error": "No recipients found for the given document ID."}, status=404)
+#         except Exception as e:
+#             return JsonResponse({"error": str(e)}, status=500)
 
 
 # send email
