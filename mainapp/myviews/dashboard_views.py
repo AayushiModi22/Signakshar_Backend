@@ -60,16 +60,54 @@ from django.utils.decorators import method_decorator
 #         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class DocumentView2(APIView):
-    # @method_decorator(log_api_request)
-    # def dispatch(self, request, *args, **kwargs):
-    #     return super().dispatch(request, *args, **kwargs)
+from django.db.models import OuterRef, Subquery, Exists
 
+# class DocumentView2(APIView):
+#     def post(self, request, format=None):
+#         print("dashboard_views DocumentView2")
+#         created_by_you = request.data.get('createdByYou')
+#         created_by_others = request.data.get('createdByOthers')
+#         user_id = request.data.get('userid') #logged in 
+#         print("user id : ",user_id)
+        
+#         if not user_id:
+#             return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         try:
+#             email = User.objects.get(id=user_id).email
+#         except User.DoesNotExist:
+#             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+#         # Here we use Subquery to evaluate the subquery in a parent query
+#         recipient_position_data_exists = RecipientPositionData.objects.filter(docId=OuterRef('pk')).values('id')
+#         # Subquery approach to inspect the result
+#         documents = DocumentTable.objects.annotate(
+#             has_recipient_position_data=Exists(recipient_position_data_exists)
+#         ).filter(has_recipient_position_data=True)
+
+#         # Iterate over the documents and print the corresponding recipient data ids
+#         for document in documents:
+#             recipient_data_ids = RecipientPositionData.objects.filter(docId=document.pk).values_list('id', flat=True)
+#             print(f"Document ID: {document.pk}, Recipient Data IDs: {list(recipient_data_ids)}")
+
+#         documents_to_delete = DocumentTable.objects.filter(
+#             creator_id=user_id
+#         ).filter(
+#             ~Exists(recipient_position_data_exists)
+#         )
+
+#         print("------------")
+#         print(documents_to_delete)
+
+#         return Response({"message": "Check console for output"})
+
+class DocumentView2(APIView):
     def post(self, request, format=None):
         print("dashboard_views DocumentView2")
         created_by_you = request.data.get('createdByYou')
         created_by_others = request.data.get('createdByOthers')
-        user_id = request.data.get('userid')
+        user_id = request.data.get('userid') #logged in 
+        
 
         if not user_id:
             return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -103,6 +141,8 @@ class DocumentView2(APIView):
 
         # Deleting documents whose docId does not exist in RecipientPositionData
         documents_to_delete = DocumentTable.objects.filter(
+            creator_id=user_id
+        ).filter(
             ~Exists(recipient_position_data_exists)
         )
         documents_to_delete.delete()

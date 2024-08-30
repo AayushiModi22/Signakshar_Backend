@@ -338,10 +338,10 @@ class UserUpdateView(APIView):
             'draw_enc_key': request.data.get('initials[draw_enc_key]'),
             'img_name': request.data.get('initials[img_name]'),
             'img_enc_key': request.data.get('initials[img_enc_key]'),
-            'initial_text_color': request.data.get('signature[initial_text_color]'),
-            'initial_text_font': request.data.get('signature[initial_text_font]'),
-            'initial_text_value': request.data.get('signature[initial_text_value]'),
-            'initial_text': request.data.get('signature[initial_text]'),
+            'initial_text_color': request.data.get('initials[initial_text_color]'),
+            'initial_text_font': request.data.get('initials[initial_text_font]'),
+            'initial_text_value': request.data.get('initials[initial_text_value]'),
+            'initial_text': request.data.get('initials[initial_text]'),
         }
 
         user_serializer = UserSerializer(user, data=user_data, partial=True)
