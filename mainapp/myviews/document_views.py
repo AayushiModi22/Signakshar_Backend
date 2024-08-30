@@ -572,8 +572,10 @@ def save_recipient_position_data(request):
                 sequence_emails(payload,isSigned)
             elif doc.req_type == "N":
                 if data["Schedule"]:
+                    print("====================>none_send_email_schedule------0")
                     none_send_email_schedule(email_messages,doc,data["scheduleDateAndTime"])
                 else:
+                    print("====================>none_send_email------0")
                     none_send_email(email_messages,doc)
 
             return JsonResponse({"message": "Recipient position data saved successfully.","error":False}, status=201)
@@ -667,6 +669,7 @@ def get_email_list(request):
 
 def none_send_email(email_messages, doc):
     try:
+        # print("----------------->>>>>>>>>>1-----None_Send_email", email_messages)
         for email_message in email_messages:
             recipient_email = email_message.get('email')
             subject = email_message.get('subject')
@@ -675,23 +678,18 @@ def none_send_email(email_messages, doc):
             url = email_message.get('url')
             username = recipient_email.split('@')[0]
             recRole = email_message.get('recRole')
+            # print("----------------->>>>>>>>>2------None_Send_email", email_message)
 
             try:
+                print("Creating EmailList object for recipient:", recipient_email)
                 email_obj = EmailList.objects.create(emails=recipient_email, status="sent", docId=doc)
                 email_obj.save()
+                print("EmailList object created successfully:", email_obj)
             except Exception as e:
-                return JsonResponse({'success': False, 'message': f"Error creating email entry: {str(e)}"})
+                print("Failed to create EmailList object:", str(e))
+                continue
 
             try:
-                schedule_sequence_email({
-                    "email": recipient_email,
-                    "reminderDays": doc.reminderDays,
-                    "scheduledDate": doc.expirationDateTime,
-                    "doc_id": doc.id,
-                    "title": subject,
-                    "message": message
-                })
-                
                 html_content = render_to_string('otp-template/document-signing.html', {
                     'reciever_link': url,
                     'username': username,
@@ -700,6 +698,7 @@ def none_send_email(email_messages, doc):
                 })
                 text_content = strip_tags(html_content)
                 
+                print(f"Sending email to {recipient_email} with subject: {subject}")
                 email = EmailMultiAlternatives(
                     subject=subject,
                     body=text_content,
@@ -708,14 +707,30 @@ def none_send_email(email_messages, doc):
                 )
                 email.attach_alternative(html_content, "text/html")
                 email.send()
+                print(f"Email sent successfully to {recipient_email}")
+                
+                # Schedule follow-up emails if necessary
+                schedule_sequence_email({
+                    "email": recipient_email,
+                    "reminderDays": doc.reminderDays,
+                    "scheduledDate": doc.expirationDateTime,
+                    "doc_id": doc.id,
+                    "title": subject,
+                    "message": message,
+                    "text_content": text_content,
+                    "html_content": html_content
+                })
+                
             except Exception as e:
-                return JsonResponse({'success': False, 'message': f"Error sending email: {str(e)}"})
+                print(f"Failed to send email to {recipient_email}: {str(e)}")
+                continue
 
         return JsonResponse({'success': True, 'message': 'Emails sent successfully'})
     except Exception as e:
+        print(f"Unexpected error in none_send_email: {str(e)}")
         return JsonResponse({'success': False, 'message': f"Unexpected error: {str(e)}"})
-   
-   
+
+
 def none_send_email_schedule(email_messages, doc, datetime):
     try:
         print("doc_views none_send_email_schedule")
@@ -752,27 +767,6 @@ def none_send_email_schedule(email_messages, doc, datetime):
  
 
 
-# def send_mail_to_sequence_recipient(email_obj, subject, text_content, html_content, doc_id):
-#     print("doc_views send_mail_to_sequence_recipient")
-   
-#     # Update the status of the current email to 'sent'
-#     email_data = EmailList.objects.filter(docId=doc_id, emails=email_obj).first()
-#     email_data.status = 'sent'
-#     email_data.save()
-   
-#     from_email = settings.EMAIL_HOST_USER
-   
-#     # Send the email with HTML content
-#     email = EmailMultiAlternatives(
-#         subject=subject,
-#         body=text_content,
-#         from_email=from_email,
-#         to=[email_obj]
-#     )
-#     print("send_mail_to_sequence_recipient_email",email)
-#     email.attach_alternative(html_content, "text/html")
-#     email.send()
-
 def send_mail_to_sequence_recipient(email_obj, subject, text_content="", html_content="", doc_id=None):
     print("doc_views send_mail_to_sequence_recipient",email_obj," ",subject)
     
@@ -800,7 +794,6 @@ def send_mail_to_sequence_recipient(email_obj, subject, text_content="", html_co
     email.send()
 
 
-
 def send_mail_to_sequence_recipient_schedule(recipient_email, subject, text_content, html_content, doc_id, scheduled_datetime):
     try:
         print("doc_views send_mail_to_sequence_recipient")
@@ -808,6 +801,7 @@ def send_mail_to_sequence_recipient_schedule(recipient_email, subject, text_cont
         if isinstance(scheduled_datetime, str):
             scheduled_datetime = datetime.strptime(scheduled_datetime, '%d/%m/%Y, %H:%M')
             scheduled_datetime = timezone.make_aware(scheduled_datetime, timezone.get_current_timezone())
+            print("Scheduled datetime after parsing and timezone awareness:", scheduled_datetime)
        
         if isinstance(scheduled_datetime, datetime):
             expiration_days = (scheduled_datetime - timezone.now()).days
@@ -819,6 +813,7 @@ def send_mail_to_sequence_recipient_schedule(recipient_email, subject, text_cont
                 expiration_days=expiration_days,
                 doc_id=doc
             )
+            print("ScheduledEmail created:", scheduled_email)
 
             crontab_schedule, created = CrontabSchedule.objects.get_or_create(
                 minute=scheduled_datetime.minute,
@@ -827,8 +822,10 @@ def send_mail_to_sequence_recipient_schedule(recipient_email, subject, text_cont
                 month_of_year=scheduled_datetime.month,
                 defaults={'timezone': 'Asia/Kolkata'}
             )
+            print("CrontabSchedule created:", crontab_schedule, "Created new schedule:", created)
 
             task_name = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{scheduled_datetime.strftime('%Y_%m_%d_%H_%M')}"
+            print("Task name:", task_name)
            
             PeriodicTask.objects.update_or_create(
                 name=task_name,
@@ -838,8 +835,10 @@ def send_mail_to_sequence_recipient_schedule(recipient_email, subject, text_cont
                     'args': json.dumps([scheduled_email.id, subject, text_content, html_content]),
                 }
             )
+            print("PeriodicTask created/updated")
     except Exception as e:
         print("Error:", e)
+
 
 
 def sequence_emails(data,isSigned):
@@ -1080,105 +1079,9 @@ def sequence_email_approval(request):
         return JsonResponse({"error": str(e)}, status=400)
 
 
-# def schedule_sequence_email(data):
-#     try:
-#         print("doc_views schedule_sequence_email")
-#         print("==================1===========================")
-#         recipient_email = data['email']
-#         scheduled_date = data['scheduledDate']
-#         print("scheduled_date : ",type(scheduled_date))
-#         reminder_days = data['reminderDays']
-#         doc_id = data['doc_id']
-#         message = data['message']
-#         title = data['title']
-#         html_content = data.get('html_content', '')
-#         text_content = strip_tags(html_content)
-#         print("====================2=========================")
-#         if isinstance(scheduled_date, str):
-#             # If scheduled_date is a string, parse it to a datetime object
-#             scheduled_datetime = datetime.strptime(scheduled_date, '%Y-%m-%d %H:%M:%S%z')
-#         elif isinstance(scheduled_date, datetime):
-#             # If scheduled_date is already a datetime object, use it directly
-#             scheduled_datetime = scheduled_date
-#         else:
-#             raise ValueError("scheduled_date is neither a string nor a datetime object")
-
-#         # Format the datetime object as per the required format
-#         formatted_date = scheduled_datetime.strftime('%d-%m-%Y')
-#         print("Formatted scheduled_date:", formatted_date)
-
-#         # Parse the string to a datetime object
-       
-#         scheduled_datetime = timezone.make_aware(datetime.strptime(formatted_date,'%d-%m-%Y'), timezone.get_current_timezone())
-#         print("===================3==========================")
-#         # Calculate the reminder date for 4:00:00 PM
-#         reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
-#         reminder_datetime_pm = reminder_datetime_pm.replace(hour=14, minute=2, second=0)
-#         print("===================4==========================")
-#         # Calculate the reminder date for 10:00:00 AM based on selected days--------change hereeeeeeeeeeeeeee
-#         reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-#         reminder_datetime_am = reminder_datetime_am.replace(hour=13, minute=54, second=0)
-#         print("===================5==========================")
-#         expiration_days = (scheduled_datetime - timezone.now()).days
-#         doc = DocumentTable.objects.get(pk=doc_id)
-#         print("===================6==========================")
-#         print(doc)
-#         scheduled_email = ScheduledEmail.objects.create(
-#             recipient_email=recipient_email,
-#             scheduled_time=scheduled_datetime,
-#             expiration_days=expiration_days,
-#             reminder_date_pm=reminder_datetime_pm,
-#             reminder_date_am=reminder_datetime_am,
-#             doc_id=doc
-#         )
-#         print("==================***********************************************==")
-#         # Create CrontabSchedules for both reminder times
-#         crontab_schedule_pm, created_pm = CrontabSchedule.objects.get_or_create(
-#             minute=2,
-#             hour=14,
-#             day_of_month=reminder_datetime_pm.day,
-#             month_of_year=reminder_datetime_pm.month,
-#             defaults={'timezone': 'Asia/Kolkata'}
-#         )
-#         # //////////////////change hereeeeeee
-#         crontab_schedule_am, created_am = CrontabSchedule.objects.get_or_create(
-#             minute=54,
-#             hour=13,
-#             day_of_month=reminder_datetime_am.day,
-#             month_of_year=reminder_datetime_am.month,
-#             defaults={'timezone': 'Asia/Kolkata'}
-#         )
-#         print("==================***********************************************==")
-#         # Create PeriodicTasks associated with the scheduled email and CrontabSchedules
-#         task_name_pm = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_pm.strftime('%Y_%m_%d_%H_%M')}_pm"
-#         task_name_am = f"send_mail_to_{recipient_email.replace('@', '_').replace('.', '_')}_at_{reminder_datetime_am.strftime('%Y_%m_%d_%H_%M')}_am"
-#         print("==================***********************************************==")
-#         # Update or create PeriodicTasks for 4:00:00 PM reminder
-#         PeriodicTask.objects.update_or_create(
-#             name=task_name_pm,
-#             defaults={
-#                 'crontab': crontab_schedule_pm,
-#                 'task': 'send_mail_app.task.send_mail_func',
-#                 'args': json.dumps([scheduled_email.id,title,text_content, html_content]),
-#             }
-#         )
-   
-#         # Update or create PeriodicTasks for 10:00:00 AM reminder
-#         PeriodicTask.objects.update_or_create(
-#             name=task_name_am,
-#             defaults={
-#                 'crontab': crontab_schedule_am,
-#                 'task': 'send_mail_app.task.send_mail_func',
-#                 'args': json.dumps([scheduled_email.id,title,text_content,html_content]),
-#             }
-#         )
-
-#         return JsonResponse({'message': 'Scheduled Email'}, status=200)
-#     except Exception as e:
-#         return JsonResponse({'error': str(e)}, status=500)
-
 
 def schedule_sequence_email(data):
+    # print("========================>4-----schedule_sequence_email",data)
     try:
         print("doc_views schedule_sequence_email",data['email'])
         recipient_email = data['email']
@@ -1207,11 +1110,11 @@ def schedule_sequence_email(data):
 
         # Calculate the reminder date for 4:00:00 PM
         reminder_datetime_pm = scheduled_datetime - timedelta(days=1)
-        reminder_datetime_pm = reminder_datetime_pm.replace(hour=15, minute=57, second=0)
+        reminder_datetime_pm = reminder_datetime_pm.replace(hour=13, minute=53, second=0)
 
         # Calculate the reminder date for 10:00:00 AM based on selected days
         reminder_datetime_am = scheduled_datetime - timedelta(days=reminder_days)
-        reminder_datetime_am = reminder_datetime_am.replace(hour=16, minute=22, second=0)
+        reminder_datetime_am = reminder_datetime_am.replace(hour=14, minute=47, second=0)
 
         expiration_days = (scheduled_datetime - timezone.now()).days
         doc = DocumentTable.objects.get(pk=doc_id)
@@ -1227,16 +1130,16 @@ def schedule_sequence_email(data):
 
         # Create CrontabSchedules for both reminder times
         crontab_schedule_pm, created_pm = CrontabSchedule.objects.get_or_create(
-            minute=57,
-            hour=15,
+            minute=53,
+            hour=12,
             day_of_month=reminder_datetime_pm.day,
             month_of_year=reminder_datetime_pm.month,
             defaults={'timezone': 'Asia/Kolkata'}
         )
 
         crontab_schedule_am, created_am = CrontabSchedule.objects.get_or_create(
-            minute=22,
-            hour=16,
+            minute=47,
+            hour=14,
             day_of_month=reminder_datetime_am.day,
             month_of_year=reminder_datetime_am.month,
             defaults={'timezone': 'Asia/Kolkata'}
