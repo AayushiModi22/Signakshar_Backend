@@ -358,8 +358,9 @@ def save_doc(request):
             doc_id = data.get('doc_id')  # Fetch doc_id if it exists
             user = User.objects.get(pk=userid)
 
+            print("doc_id:::",doc_id)
             # If doc_id exists, update the existing document
-            if doc_id:
+            if doc_id is not None:
                 try:
                     document = DocumentTable.objects.get(pk=doc_id)
                     
