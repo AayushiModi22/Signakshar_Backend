@@ -239,3 +239,74 @@ class deleteDocumentView(APIView):
         # Optionally, you can return details of the deleted document or a success message
         return Response({"message": "Document deleted successfully","status":200}, status=status.HTTP_200_OK)
           
+
+# //// combined document view
+ 
+# properly working but late response
+class CombinedDocumentView(APIView):
+    def post(self, request, format=None):
+        print("dashboard_views DocumentViewMerged")
+        created_by_you = request.data.get('createdByYou')
+        created_by_others = request.data.get('createdByOthers')
+        user_id = request.data.get('userid')  # logged in
+ 
+        if not user_id:
+            return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+ 
+        try:
+            email = User.objects.get(id=user_id).email
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+ 
+        recipient_position_data_exists = RecipientPositionData.objects.filter(docId=OuterRef('pk')).values('id')
+ 
+        if created_by_you and created_by_others:
+            documents = DocumentTable.objects.filter(
+                (Q(creator_id=user_id) |
+                 Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True))) &
+                Exists(recipient_position_data_exists)
+            ).select_related('creator_id', 'last_modified_by')
+        elif created_by_you:
+            documents = DocumentTable.objects.filter(
+                Q(creator_id=user_id) &
+                Exists(recipient_position_data_exists)
+            ).select_related('creator_id', 'last_modified_by')
+        elif created_by_others:
+            documents = DocumentTable.objects.filter(
+                Q(id__in=DocumentRecipientDetail.objects.filter(email=email).values_list('docId', flat=True)) &
+                ~Q(creator_id=user_id) &
+                Exists(recipient_position_data_exists)
+            ).select_related('creator_id', 'last_modified_by')
+        else:
+            return Response({"error": "Invalid request parameters"}, status=status.HTTP_400_BAD_REQUEST)
+ 
+        # Deleting documents whose docId does not exist in RecipientPositionData
+        documents_to_delete = DocumentTable.objects.filter(
+            creator_id=user_id
+        ).filter(
+            ~Exists(recipient_position_data_exists)
+        )
+        documents_to_delete.delete()
+ 
+        # Get the recipient count and pending count for all documents
+        doc_ids = documents.values_list('id', flat=True)
+ 
+        recipient_counts = DocumentRecipientDetail.objects.filter(
+            docId__in=doc_ids
+        ).values('docId').annotate(recipient_count=Count('id'))
+ 
+        pending_counts = RecipientPositionData.objects.filter(
+            Q(docId__in=doc_ids) &
+            (Q(reviewer_status='pending') | Q(reviewer_status='sent') | Q(signer_status='pending') | Q(signer_status='sent'))
+        ).values('docId').annotate(pending_count=Count('id', distinct=True))
+ 
+        # Combine the document data with recipient and pending counts
+        serializer = DocumentSerializer(documents, many=True)
+        document_data = serializer.data
+ 
+        for doc in document_data:
+            doc_id = doc['id']
+            doc['recipient_count'] = next((rc['recipient_count'] for rc in recipient_counts if rc['docId'] == doc_id), 0)
+            doc['pending_count'] = next((pc['pending_count'] for pc in pending_counts if pc['docId'] == doc_id), 0)
+ 
+        return Response(document_data, status=status.HTTP_200_OK)

@@ -12,7 +12,7 @@ from .myviews.document_views import DocumentTableViewset,DocumentByDocId,DocAllR
 from .myviews.document_views import send_email,sequence_email_approval,get_doc
 from .myviews.template_views import TemplateViewSet,TemplateDraggedDataViewset,GetDraggedDataByTempRec,deleteTemplate,TemplateRecipientViewset,UseTemplateRecipientViewSet,use_template_recipient_didTidCid,TemplateRecipientByTemplateId,TemplateByTemplateId,updateTemplateDraggedData
 from .myviews.aws_views import upload_file_to_s3,upload_template_file_to_s3,fetch_pdf_from_s3,generate_presigned_url,delete_file_from_s3,fetch_templateFile_from_s3,delete_template_from_s3,fetch_and_convert_pdf_from_s3
-from .myviews.dashboard_views import getRecipientCount,getPendingRecipientCount,getRecipientDetails,getStatus,deleteDocumentView,DocumentView2
+from .myviews.dashboard_views import getRecipientCount,getPendingRecipientCount,getRecipientDetails,getStatus,deleteDocumentView,DocumentView2,CombinedDocumentView
 from .myviews import bulkpdfsigning_views
 # from .myviews.apilog_views import ApiLogViewset
 
@@ -88,6 +88,7 @@ urlpatterns = [
 
     #bulk pdf signing
     path('save_multiple_doc/',bulkpdfsigning_views.save_multiple_doc),
+    path('getCombinedDocuments/',CombinedDocumentView.as_view()),
     
     # Log
     # path('apilog/', ApiLogViewset.as_view({'get': 'list', 'post': 'create'}), name='apilog'),
