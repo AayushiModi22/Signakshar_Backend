@@ -190,7 +190,6 @@ def log_api_request(view_func):
             request_body_data.pop('file', None)  # Exclude file data from request body log
             log_entry.request_body = json.dumps(request_body_data)
 
-        print("content_type::::",request.body)
         try:
             # Call the actual view function
             response = view_func(request, *args, **kwargs)
