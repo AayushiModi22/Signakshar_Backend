@@ -295,9 +295,9 @@ class CombinedDocumentView(APIView):
             docId__in=doc_ids
         ).values('docId').annotate(recipient_count=Count('id'))
  
-        pending_counts = RecipientPositionData.objects.filter(
+        pending_counts = EmailList.objects.filter(
             Q(docId__in=doc_ids) &
-            (Q(reviewer_status='pending') | Q(reviewer_status='sent') | Q(signer_status='pending') | Q(signer_status='sent'))
+            (Q(status='pending') | Q(status='sent') | Q(status='Pending') | Q(status='Sent'))
         ).values('docId').annotate(pending_count=Count('id', distinct=True))
  
         # Combine the document data with recipient and pending counts
