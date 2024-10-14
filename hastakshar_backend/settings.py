@@ -1,6 +1,7 @@
 from pathlib import Path
 from decouple import config
 
+import pymysql
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / 'mainapp' / 'email-format' / 'otp-template'
@@ -80,27 +81,28 @@ WSGI_APPLICATION = 'hastakshar_backend.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hastakshar',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': 'localhost',  # Change this to your MySQL server's hostname or IP address
-        'PORT': '3306',       # Change this to your MySQL server's port
-    }
-}
-
+pymysql.install_as_MySQLdb()
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'signakshar',
-#         'USER': 'avnadmin',
-#         'PASSWORD': 'AVNS_EUHuRflCHDzhA37zq_5',
-#         'HOST': 'mysql-31695c3c-signakshar-qit.j.aivencloud.com', 
-#         'PORT': '25587',      
+#         'NAME': 'hastakshar',
+#         'USER': 'root',
+#         'PASSWORD': '',
+#         'HOST': 'localhost',  # Change this to your MySQL server's hostname or IP address
+#         'PORT': '3306',       # Change this to your MySQL server's port
 #     }
 # }
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'signakshar',
+        'USER': 'avnadmin',
+        'PASSWORD': 'AVNS_EUHuRflCHDzhA37zq_5',
+        'HOST': 'mysql-31695c3c-signakshar-qit.j.aivencloud.com', 
+        'PORT': '25587',      
+    }
+}
 
 # //new AWS
 
@@ -110,6 +112,8 @@ AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
 AWS_REGION = config('AWS_REGION')
 
 # Other settings...
+RECIEVER_PANEL_ENDPOINT = config('RECIEVER_PANEL_ENDPOINT', default='http://localhost:3000/')
+
 
 
 
@@ -211,5 +215,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
-    "http://192.168.1.59:3000"
+    "http://192.168.1.59:3000",
+    "http://localhost:2722",
+    "http://192.168.1.98:2722",
+    "http://192.168.1.98:8001",
+    "http://192.168.1.54:2722",
+    "http://192.168.1.54:8001"
 ]
