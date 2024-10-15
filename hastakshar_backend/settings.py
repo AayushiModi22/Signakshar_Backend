@@ -207,7 +207,7 @@ EMAIL_PORT=587
 # DEFAULT_FROM_EMAIL='Celery <rajeshree24patel@gmail.com>'
 
 EMAIL_HOST_USER='signakshar.qit@gmail.com'
-EMAIL_HOST_PASSWORD="vbhi ywif azxn glxt"
+EMAIL_HOST_PASSWORD="dahj ngco ewec jhws"
 DEFAULT_FROM_EMAIL='Celery <signakshar.qit@gmail.com>'
 
 
