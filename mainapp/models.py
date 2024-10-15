@@ -54,14 +54,14 @@ class RecipientRole(models.Model):
     
 class DocumentTable(models.Model):
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
-    pdfName = models.CharField(max_length=100)
+    name = models.CharField(max_length=255)
+    pdfName = models.CharField(max_length=255)
     creationDateTime = models.DateTimeField(default=timezone.now)
     size = models.IntegerField()
-    s3Key = models.CharField(max_length=100)
+    s3Key = models.CharField(max_length=255)
     creator_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='positions_sent',default=1)
     status = models.CharField(max_length=100)
-    email_title = models.CharField(max_length=100)
+    email_title = models.CharField(max_length=255)
     email_msg = models.CharField(max_length=500)  
     req_type = models.CharField(max_length=1,default='N')  
     Schedule_type = models.CharField(max_length=1,default='N')  
@@ -71,7 +71,7 @@ class DocumentTable(models.Model):
     reminderDays = models.IntegerField()
 
 class DocumentRecipientDetail(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=255)
     email = models.EmailField()
     roleId = models.ForeignKey(RecipientRole, on_delete=models.CASCADE,default=1)
     docId = models.ForeignKey('DocumentTable', on_delete=models.CASCADE)   
@@ -240,7 +240,7 @@ class NewAPILog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     user_id = models.IntegerField(null=True, blank=True)
     endpoint = models.CharField(max_length=255)
-    method = models.CharField(max_length=10)
+    method = models.CharField(max_length=30)
     request_headers = models.TextField(null=True, blank=True)
     request_body = models.TextField(null=True, blank=True)
     response_status_code = models.IntegerField()
