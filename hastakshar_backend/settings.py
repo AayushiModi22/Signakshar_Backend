@@ -220,5 +220,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.98:2722",
     "http://192.168.1.98:8001",
     "http://192.168.1.54:2722",
-    "http://192.168.1.54:8001"
+    "http://192.168.1.54:8001",
+    "https://signakshar-cyan.vercel.app"
 ]
